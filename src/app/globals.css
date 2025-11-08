@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Personalização leve */
+html,
+body {
+  @apply bg-[#F8F9FB] text-[#1C1C1C] font-sans;
+}

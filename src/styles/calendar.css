@@ -1,0 +1,146 @@
+/* -----------------------------------------------
+   🌙 ESTILO MODERNO – CALENDÁRIO GESTÃO+
+   Inspirado no visual do Notion + Google Calendar
+------------------------------------------------- */
+
+.fc {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  color: #1e293b; /* slate-800 */
+  background-color: #ffffff;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.05);
+  transition: all 0.3s ease;
+}
+
+.fc:hover {
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
+}
+
+/* HEADER */
+.fc-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(to right, #f8fafc, #f1f5f9);
+}
+
+.fc-toolbar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.fc-button {
+  background-color: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  color: #334155 !important;
+  padding: 0.4rem 0.7rem !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.fc-button:hover {
+  background-color: #e2e8f0 !important;
+}
+
+.fc-button.fc-button-active {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+/* DIAS */
+.fc-daygrid-day {
+  border: 1px solid #f1f5f9 !important;
+  transition: background-color 0.2s ease;
+}
+
+.fc-daygrid-day:hover {
+  background-color: #f8fafc !important;
+}
+
+.fc-daygrid-day-number {
+  color: #334155;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+}
+
+/* DIAS ATUAIS */
+.fc-day-today {
+  background-color: #eff6ff !important;
+  border: 1px solid #93c5fd !important;
+}
+
+/* EVENTOS */
+.fc-event {
+  background-color: #2563eb !important; /* azul principal */
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 2px 4px !important;
+  font-size: 11px !important;
+  font-weight: 500;
+  color: white !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fc-event:hover {
+  background-color: #1d4ed8 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
+}
+
+/* TÍTULOS DE DIAS */
+.fc-col-header-cell {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+  font-weight: 600;
+  text-transform: capitalize;
+  font-size: 12px;
+  border: none !important;
+}
+
+/* SCROLL SUAVE EM MOBILE */
+.fc-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.fc-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+/* TOOLTIP */
+.react-tooltip {
+  background: rgba(15, 23, 42, 0.9) !important;
+  color: #f8fafc !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  padding: 6px 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* RESPONSIVO */
+@media (max-width: 768px) {
+  .fc-toolbar-title {
+    font-size: 0.9rem;
+  }
+
+  .fc-button {
+    padding: 0.35rem 0.5rem !important;
+    font-size: 11px !important;
+  }
+}
