@@ -1,19 +1,25 @@
-import { createBrowserClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-let browserClient: SupabaseClient | null = null;
+let client: SupabaseClient | null = null
 
-export function getBrowserClient(): SupabaseClient {
-  if (!browserClient) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+/**
+ * Retorna uma instância única do Supabase Client para o browser.
+ * Evita recriação e garante persistência da sessão via cookies.
+ */
+export function createClient(): SupabaseClient {
+  if (!client) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-    if (!url || !key) {
-      throw new Error("Supabase browser client requires public URL and anon key");
+    if (!url || !anonKey) {
+      throw new Error(
+        '❌ Supabase URL ou Anon Key ausentes nas variáveis de ambiente.'
+      )
     }
 
-    browserClient = createBrowserClient(url, key);
+    client = createBrowserClient(url, anonKey)
   }
 
-  return browserClient;
+  return client
 }

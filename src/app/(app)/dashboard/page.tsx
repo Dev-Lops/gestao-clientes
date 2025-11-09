@@ -8,7 +8,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { createClient } from "@/lib/supabase/client";
+
+import { createClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type {
   AppClient,
@@ -16,6 +17,7 @@ import type {
   ContentCalendarItem,
   OrgClientStats,
 } from "@/types/tables";
+import { format, parseISO } from "date-fns";
 
 const EMPTY_CLIENTS: AppClient[] = [];
 const EMPTY_TASKS: AppTask[] = [];
@@ -44,32 +46,25 @@ function RealtimeDashboard() {
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
 
+  // 👇 Corrigido: cast duplo “as unknown as Tipo[]” para evitar TS2352
   const clients =
-    useAppStore((state) => state.tables.app_clients as AppClient[] | undefined) ??
+    (useAppStore((s) => s.tables.app_clients) as unknown as AppClient[]) ??
     EMPTY_CLIENTS;
   const tasks =
-    useAppStore((state) => state.tables.app_tasks as AppTask[] | undefined) ?? EMPTY_TASKS;
+    (useAppStore((s) => s.tables.app_tasks) as unknown as AppTask[]) ?? EMPTY_TASKS;
   const agendaItems =
-    useAppStore(
-      (state) => state.tables.app_content_calendar as ContentCalendarItem[] | undefined,
-    ) ?? EMPTY_CALENDAR_ITEMS;
+    (useAppStore((s) => s.tables.app_content_calendar) as unknown as ContentCalendarItem[]) ??
+    EMPTY_CALENDAR_ITEMS;
   const stats =
-    (useAppStore(
-      (state) => state.tables.org_client_stats as OrgClientStats[] | undefined,
-    ) ?? EMPTY_STATS)[0] ?? null;
+    ((useAppStore((s) => s.tables.org_client_stats) as unknown as OrgClientStats[]) ??
+      EMPTY_STATS)[0] ?? null;
 
   const [loading, setLoading] = useState(() => clients.length === 0);
   const [error, setError] = useState<string | null>(null);
   const bootstrappedRef = useRef(false);
 
   useEffect(() => {
-    if (!orgId) {
-      return;
-    }
-
-    if (bootstrappedRef.current) {
-      return;
-    }
+    if (!orgId || bootstrappedRef.current) return;
 
     if (clients.length > 0) {
       bootstrappedRef.current = true;
@@ -84,53 +79,76 @@ function RealtimeDashboard() {
         setLoading(true);
 
         const [statsRes, clientsRes, tasksRes, agendaRes] = await Promise.all([
+          // 📊 Estatísticas da organização
           supabase
-            .from("org_client_stats")
+            .from("org_client_stats_view")
             .select("id, org_id, total, ativos, onboarding, pausados, media_progresso")
             .eq("org_id", orgId)
             .limit(1),
+
+          // 👥 Últimos clientes
           supabase
             .from("app_clients")
             .select("id, org_id, name, status, plan, main_channel, created_at")
             .eq("org_id", orgId)
             .order("created_at", { ascending: false })
             .limit(6),
+
+          // ✅ Tarefas mais recentes
           supabase
             .from("app_tasks")
-            .select("id, org_id, client_id, title, status, due_date, urgency")
+            .select("id, org_id, client_id, title, status, due_date, urgency, created_at")
             .eq("org_id", orgId)
             .limit(20),
+
+          // 📅 Agenda — agora sem alias e com conversão manual
           supabase
             .from("app_content_calendar")
-            .select("id, org_id, created_by, date, title, notes, channel")
+            .select("id, org_id, created_by, event_date, title, notes, channel, created_at")
             .eq("org_id", orgId)
-            .order("date", { ascending: true })
+            .order("event_date", { ascending: true })
             .limit(14),
         ]);
 
-        if (ignore) return;
-
+        // 🚨 Tratamento de erros aprimorado
         if (statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error) {
           throw (
             statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error
           );
         }
 
+        // 🧩 Conversão manual para compatibilidade com ContentCalendarItem
+        const normalizedAgenda: ContentCalendarItem[] = (agendaRes.data ?? []).map((item) => ({
+          ...item,
+          date: format(parseISO(item.event_date), "yyyy-MM-dd"),
+        }));
+
+
+
+
+        // ✅ Atualiza o Zustand store
         setTable("org_client_stats", statsRes.data ?? []);
         setTable("app_clients", clientsRes.data ?? []);
         setTable("app_tasks", tasksRes.data ?? []);
-        setTable("app_content_calendar", agendaRes.data ?? []);
+        setTable("app_content_calendar", normalizedAgenda);
 
         bootstrappedRef.current = true;
         setLoading(false);
-      } catch (err) {
-        console.error("🚨 Dashboard error:", err);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error("🚨 Dashboard error:", err.message, err.stack);
+        } else {
+          console.error("🚨 Dashboard error (raw):", JSON.stringify(err, null, 2));
+        }
+
         if (!ignore) {
           setError("Falha ao carregar dados.");
           setLoading(false);
         }
       }
     }
+
+
 
     fetchData();
 
@@ -141,38 +159,28 @@ function RealtimeDashboard() {
 
   useEffect(() => {
     if (error) {
-      const timeout = setTimeout(() => {
-        router.refresh();
-      }, 4000);
-
+      const timeout = setTimeout(() => router.refresh(), 4000);
       return () => clearTimeout(timeout);
     }
   }, [error, router]);
 
-  if (!orgId) {
-    return <DashboardSkeleton />;
-  }
-
+  if (!orgId) return <DashboardSkeleton />;
   if (loading) return <DashboardSkeleton />;
   if (error)
     return <div className="p-10 text-center text-red-600 font-medium">{error}</div>;
 
   const { ativos, onboarding, pausados, media_progresso } = stats ?? {};
 
-  const atrasadas = tasks.filter((task) => ["blocked", "todo"].includes(task.status)).length;
+  const atrasadas = tasks.filter((t) => ["blocked", "todo"].includes(t.status)).length;
   const urgentes = tasks.filter(
-    (task) => ["high", "critical"].includes(task.urgency) && task.status !== "done",
+    (t) => ["high", "critical"].includes(t.urgency) && t.status !== "done",
   ).length;
 
   const kpis = [
     { label: "Clientes ativos", value: ativos ?? 0, helper: "em acompanhamento" },
     { label: "Em onboarding", value: onboarding ?? 0, helper: "em integração" },
     { label: "Pausados", value: pausados ?? 0, helper: "aguardando retorno" },
-    {
-      label: "Média de progresso",
-      value: `${media_progresso ?? 0}%`,
-      helper: "dos planos ativos",
-    },
+    { label: "Média de progresso", value: `${media_progresso ?? 0}%`, helper: "dos planos ativos" },
   ];
 
   return (
@@ -222,6 +230,7 @@ function RealtimeDashboard() {
         <span>⏰ {atrasadas} tarefas atrasadas</span>
       </div>
 
+      {/* Últimos clientes */}
       <section>
         <h2 className="text-lg font-semibold text-slate-900 mb-3">Últimos clientes</h2>
         {clients.length === 0 ? (
@@ -230,17 +239,16 @@ function RealtimeDashboard() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clients.map((client) => {
               const label = STATUS_LABELS[client.status] ?? client.status;
-
               const badgeClass =
                 label === "Ativo"
                   ? "text-green-600"
                   : label === "Onboarding"
-                  ? "text-yellow-600"
-                  : label === "Pausado"
-                  ? "text-orange-500"
-                  : label === "Encerrado"
-                  ? "text-red-500"
-                  : "text-slate-500";
+                    ? "text-yellow-600"
+                    : label === "Pausado"
+                      ? "text-orange-500"
+                      : label === "Encerrado"
+                        ? "text-red-500"
+                        : "text-slate-500";
 
               return (
                 <motion.div key={client.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
@@ -251,7 +259,8 @@ function RealtimeDashboard() {
                         Status: <span className={badgeClass}>{label}</span>
                       </p>
                       <p className="text-xs text-slate-400">
-                        Criado em: {new Date(client.created_at).toLocaleDateString("pt-BR")}
+                        Criado em:{" "}
+                        {new Date(client.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                   </Card>
@@ -262,6 +271,7 @@ function RealtimeDashboard() {
         )}
       </section>
 
+      {/* Próximos compromissos */}
       <section>
         <h2 className="text-lg font-semibold text-slate-900 mb-3">
           Próximos compromissos (14 dias)
@@ -271,11 +281,7 @@ function RealtimeDashboard() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {agendaItems.map((event) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
+              <motion.div key={event.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
                 <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
                   <h3 className="font-medium text-slate-900">{event.title ?? "Sem título"}</h3>
                   <p className="text-xs text-slate-500 mt-1">

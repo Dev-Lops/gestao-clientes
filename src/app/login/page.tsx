@@ -1,6 +1,7 @@
 "use client";
-import { createClient } from "@/lib/supabase/client";
-import { LogIn, Loader2 } from "lucide-react";
+
+import { createClient } from "@/lib/supabase/browser";
+import { Loader2, LogIn } from "lucide-react";
 import { useState } from "react";
 
 export default function LoginPage() {

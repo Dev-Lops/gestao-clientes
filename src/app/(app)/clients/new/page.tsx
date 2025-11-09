@@ -1,11 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-
 import { roleSatisfies } from "@/lib/auth/rbac";
 import { getSessionProfile } from "@/lib/auth/session";
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,80 +12,127 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 /* ----------------------------------------------------------
-   🔹 Action Server — Criação de cliente com campos extras
+   🔹 Tipos auxiliares
 ---------------------------------------------------------- */
-export async function createClientAction(formData: FormData) {
-  const supabase = await createServerSupabase();
+interface NewClientPayload {
+  name: string;
+  plan: string;
+  main_channel: string;
+  start_date?: string | null;
+  account_manager?: string | null;
+  monthly_ticket?: number | null;
+  billing_day?: number | null;
+  payment_method?: string | null;
+  payment_status?: string | null;
+  last_meeting_at?: string | null;
+  next_delivery?: string | null;
+  progress?: number | null;
+  internal_notes?: string | null;
+}
+
+/* ----------------------------------------------------------
+   🔹 Server Action — Criação de cliente com tratamento aprimorado
+---------------------------------------------------------- */
+export async function createClientAction(formData: FormData): Promise<void> {
+  const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError || !user) throw new Error("Sessão expirada. Faça login novamente.");
+  if (userError || !user)
+    throw new Error("Sessão expirada. Faça login novamente.");
 
-  // 🧩 Campos gerais
-  const name = String(formData.get("name") ?? "").trim();
-  const plan = String(formData.get("plan") ?? "Gestão");
-  const main_channel = String(formData.get("main_channel") ?? "Instagram");
-  const start_date = formData.get("start_date") as string | null;
-  const account_manager = formData.get("account_manager") as string | null;
+  function normalizeDate(value: FormDataEntryValue | null): string | null {
+    return value && String(value).trim() !== "" ? String(value) : null;
+  }
 
-  // 🧩 Campos financeiros (owner only)
-  const monthly_ticket = formData.get("monthly_ticket") as string | null;
-  const billing_day = formData.get("billing_day") as string | null;
-  const payment_method = formData.get("payment_method") as string | null;
-  const payment_status = formData.get("payment_status") as string | null;
+  function normalizeText(value: FormDataEntryValue | null): string | null {
+    return value && String(value).trim() !== "" ? String(value).trim() : null;
+  }
 
-  // 🧩 Campos contratuais
-  const last_meeting_at = formData.get("last_meeting_at") as string | null;
-  const next_delivery = formData.get("next_delivery") as string | null;
-  const progress = formData.get("progress") as string | null;
-  const internal_notes = formData.get("internal_notes") as string | null;
+  const payload: NewClientPayload = {
+    name: String(formData.get("name") ?? "").trim(),
+    plan: (formData.get("plan") as string) || "Gestão",
+    main_channel: (formData.get("main_channel") as string) || "Instagram",
+    start_date: normalizeDate(formData.get("start_date")),
+    account_manager: normalizeText(formData.get("account_manager")),
+    monthly_ticket: formData.get("monthly_ticket")
+      ? Number(formData.get("monthly_ticket"))
+      : null,
+    billing_day: formData.get("billing_day")
+      ? Number(formData.get("billing_day"))
+      : null,
+    payment_method: normalizeText(formData.get("payment_method")),
+    payment_status: normalizeText(formData.get("payment_status")),
+    last_meeting_at: normalizeDate(formData.get("last_meeting_at")),
+    next_delivery: normalizeDate(formData.get("next_delivery")),
+    progress: formData.get("progress")
+      ? Number(formData.get("progress"))
+      : null,
+    internal_notes: normalizeText(formData.get("internal_notes")),
+  };
 
-  if (!name || name.length < 3) throw new Error("Informe um nome válido para o cliente.");
 
-  const { data: member, error: memberErr } = await supabase
+  if (!payload.name || payload.name.length < 3)
+    throw new Error("Informe um nome válido para o cliente.");
+
+  const { data: member } = await supabase
     .from("app_members")
     .select("org_id")
     .eq("user_id", user.id)
     .eq("status", "active")
     .maybeSingle();
 
-  if (memberErr || !member?.org_id)
-    throw new Error("Organização não encontrada para este usuário.");
+  let orgId = member?.org_id ?? null;
+
+  if (!orgId) {
+    const { data: ownerOrg } = await supabase
+      .from("app_orgs")
+      .select("id")
+      .eq("owner_user_id", user.id)
+      .maybeSingle();
+
+    orgId = ownerOrg?.id ?? null;
+  }
+  if (!orgId) throw new Error("Nenhuma organização vinculada encontrada.");
+
+  if (!orgId)
+    throw new Error("Não foi possível identificar a organização do usuário.");
 
   const { data, error } = await supabase
     .from("app_clients")
     .insert({
-      org_id: member.org_id,
-      name,
-      plan,
+      org_id: orgId,
+      name: payload.name,
+      plan: payload.plan,
       status: "Novo",
-      main_channel,
+      main_channel: payload.main_channel,
       created_by: user.id,
-      start_date,
-      account_manager,
-      monthly_ticket: monthly_ticket ? Number(monthly_ticket) : null,
-      billing_day: billing_day ? Number(billing_day) : null,
-      payment_method,
-      payment_status,
-      last_meeting_at,
-      next_delivery,
-      progress: progress ? Number(progress) : null,
-      internal_notes,
+      start_date: payload.start_date,
+      account_manager: payload.account_manager,
+      monthly_ticket: payload.monthly_ticket,
+      billing_day: payload.billing_day,
+      payment_method: payload.payment_method,
+      payment_status: payload.payment_status,
+      last_meeting_at: payload.last_meeting_at,
+      next_delivery: payload.next_delivery,
+      progress: payload.progress,
+      internal_notes: payload.internal_notes,
     })
     .select("id")
     .maybeSingle();
 
-  if (error) throw new Error("Falha ao criar cliente. Tente novamente.");
+  if (error) {
+    console.error("❌ Supabase insert error:", error.message, error.details, error.hint);
+    throw new Error("Erro ao criar cliente. Tente novamente.");
+  }
 
-  revalidatePath("/clients");
-  redirect(`/clients/${data?.id}/info`);
+  console.log("✅ Cliente criado com sucesso:", data);
 }
-
 /* ----------------------------------------------------------
-   🔹 Página — Formulário de criação sofisticado
+   🔹 Página — Formulário de criação com UX refinada
 ---------------------------------------------------------- */
 export default async function NewClientPage() {
   const session = await getSessionProfile();
@@ -98,6 +143,8 @@ export default async function NewClientPage() {
   }
 
   const isOwner = session.role === "owner";
+  if (session.role !== "owner") redirect("/unauthorized");
+
 
   return (
     <div className="max-w-2xl mx-auto py-10">
@@ -125,6 +172,7 @@ export default async function NewClientPage() {
                 name="name"
                 placeholder="Ex: Loja do João"
                 required
+                autoComplete="off"
               />
             </div>
 
@@ -146,7 +194,7 @@ export default async function NewClientPage() {
               <div>
                 <Label htmlFor="main_channel">Canal principal</Label>
                 <select
-                  title="main_channel"
+                  title="channel"
                   id="main_channel"
                   name="main_channel"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"

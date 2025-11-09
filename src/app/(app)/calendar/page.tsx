@@ -1,8 +1,11 @@
 "use client";
 
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,25 +19,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { createClient } from "@/lib/supabase/client";
+
+import { createClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type { ContentCalendarItem } from "@/types/tables";
 
 const EMPTY_EVENTS: ContentCalendarItem[] = [];
 
-function toLocalISODate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+// ✅ Usa date-fns para garantir formato estável (sem UTC)
+function formatLocal(date: Date): string {
+  return format(date, "yyyy-MM-dd");
 }
 
 function normalizeDate(dateStr: string): string {
-  return dateStr.slice(0, 10);
+  return format(parseISO(dateStr), "yyyy-MM-dd");
 }
 
-function toStableUTC(dateStr: string): string {
-  return `${dateStr}T12:00:00.000Z`;
+// ✅ Cria data em UTC fixo (12h) para salvar no Supabase
+function toUTC(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  return utc.toISOString();
 }
 
 type CalendarForm = {
@@ -45,72 +50,65 @@ type CalendarForm = {
 
 export default function CalendarPage() {
   const supabase = useMemo(() => createClient(), []);
-
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
   const events =
-    useAppStore((state) => state.tables.app_content_calendar as ContentCalendarItem[] | undefined) ??
-    EMPTY_EVENTS;
+    useAppStore(
+      (state) =>
+        (state.tables.app_content_calendar as ContentCalendarItem[] | undefined) ??
+        EMPTY_EVENTS
+    );
 
-  const [loading, setLoading] = useState<boolean>(() => events.length === 0);
-  const [selectedDate, setSelectedDate] = useState<string>(toLocalISODate(new Date()));
-  const [open, setOpen] = useState<boolean>(false);
+  const [loading, setLoading] = useState(() => events.length === 0);
+  const [selectedDate, setSelectedDate] = useState(formatLocal(new Date()));
+  const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CalendarForm>({ date: "", title: "", notes: "" });
   const [userId, setUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!orgId) return;
+  // Carregar eventos
+  const loadEvents = useMemo(
+    () => async () => {
+      if (!orgId) return;
+      setLoading(true);
 
-    let ignore = false;
-
-    async function load() {
-      try {
-        setLoading(true);
-        const { data: auth } = await supabase.auth.getUser();
-        const user = auth?.user;
-        if (!user) {
-          toast.error("Sessão expirada.");
-          setLoading(false);
-          return;
-        }
-
-        if (!ignore) {
-          setUserId(user.id);
-        }
-
-        if (events.length === 0) {
-          const { data: rows, error } = await supabase
-            .from("app_content_calendar")
-            .select("id, org_id, created_by, date, title, notes, channel")
-            .eq("org_id", orgId)
-            .order("date", { ascending: true });
-
-          if (error) throw error;
-
-          const normalized: ContentCalendarItem[] = (rows ?? []).map((row) => ({
-            ...row,
-            date: normalizeDate(row.date),
-          }));
-
-          if (!ignore) {
-            setTable("app_content_calendar", normalized);
-          }
-        }
-      } catch (err) {
-        console.error(err);
-        if (!ignore) toast.error("Erro ao carregar eventos.");
-      } finally {
-        if (!ignore) setLoading(false);
+      const { data: auth } = await supabase.auth.getUser();
+      const user = auth?.user;
+      if (!user) {
+        toast.error("Sessão expirada.");
+        setLoading(false);
+        return;
       }
-    }
 
-    load();
+      setUserId(user.id);
 
-    return () => {
-      ignore = true;
-    };
-  }, [events.length, orgId, setTable, supabase]);
+      const { data: rows, error } = await supabase
+        .from("app_content_calendar")
+        .select("id, org_id, created_by, event_date, title, notes, channel, created_at")
+        .eq("org_id", orgId)
+        .order("event_date", { ascending: true });
+
+      if (error) {
+        console.error(error);
+        toast.error("Erro ao carregar eventos.");
+        setLoading(false);
+        return;
+      }
+
+      const normalized = (rows ?? []).map((r) => ({
+        ...r,
+        date: normalizeDate(r.event_date),
+      }));
+
+      setTable("app_content_calendar", normalized);
+      setLoading(false);
+    },
+    [orgId, supabase, setTable]
+  );
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   const dailyEvents = useMemo(() => {
     return events
@@ -119,22 +117,19 @@ export default function CalendarPage() {
   }, [events, selectedDate]);
 
   const monthGrid = useMemo(() => {
-    const base = new Date(selectedDate);
+    const base = parseISO(`${selectedDate}T00:00:00`);
     const year = base.getFullYear();
     const month = base.getMonth();
-
     const firstDay = new Date(year, month, 1);
     const weekDayOfFirst = firstDay.getDay();
     const lastDay = new Date(year, month + 1, 0).getDate();
 
     const cells: Array<{ date: string | null }> = [];
-
     for (let i = 0; i < weekDayOfFirst; i++) cells.push({ date: null });
     for (let day = 1; day <= lastDay; day++) {
       const d = new Date(year, month, day);
-      cells.push({ date: toLocalISODate(d) });
+      cells.push({ date: formatLocal(d) });
     }
-
     return cells;
   }, [selectedDate]);
 
@@ -158,16 +153,26 @@ export default function CalendarPage() {
       id: editingId ?? crypto.randomUUID(),
       org_id: orgId,
       created_by: userId,
-      date: toStableUTC(form.date),
+      event_date: toUTC(form.date),
       title: form.title,
       notes: form.notes || null,
     };
 
-    const { error } = editingId
-      ? await supabase.from("app_content_calendar").update(payload).eq("id", editingId)
-      : await supabase.from("app_content_calendar").insert(payload);
+    const { data, error } = editingId
+      ? await supabase.from("app_content_calendar").update(payload).eq("id", editingId).select()
+      : await supabase.from("app_content_calendar").insert(payload).select();
 
-    if (error) return toast.error("Erro ao salvar.");
+    if (error) return toast.error("Erro ao salvar evento.");
+
+    const newEvent = {
+      ...data[0],
+      date: normalizeDate(data[0].event_date),
+    };
+
+    setTable("app_content_calendar", [
+      ...events.filter((e) => e.id !== newEvent.id),
+      newEvent,
+    ]);
 
     toast.success(editingId ? "Evento atualizado!" : "Evento criado!");
     setOpen(false);
@@ -182,7 +187,12 @@ export default function CalendarPage() {
       .eq("id", editingId)
       .eq("org_id", orgId);
 
-    if (error) return toast.error("Erro ao remover.");
+    if (error) return toast.error("Erro ao remover evento.");
+
+    setTable(
+      "app_content_calendar",
+      events.filter((e) => e.id !== editingId)
+    );
 
     toast.success("Evento removido!");
     setOpen(false);
@@ -192,18 +202,17 @@ export default function CalendarPage() {
     <div className="space-y-8 p-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-            Conteúdo & Agenda
-          </p>
+          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Conteúdo & Agenda</p>
           <h1 className="text-3xl font-semibold text-slate-900">Calendário editorial</h1>
           <p className="text-sm text-slate-500 max-w-xl">
             Planeje campanhas, organize lançamentos e acompanhe tudo em tempo real.
           </p>
         </div>
-        <Button onClick={() => openCreate(toLocalISODate(new Date()))}>Novo evento</Button>
+        <Button onClick={() => openCreate(formatLocal(new Date()))}>Novo evento</Button>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+        {/* 🗓️ Grade mensal */}
         <Card className="p-6 shadow-sm">
           <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
             {"dom seg ter qua qui sex sáb".split(" ").map((day) => (
@@ -213,9 +222,8 @@ export default function CalendarPage() {
 
           <div className="mt-4 grid grid-cols-7 gap-2">
             {monthGrid.map((cell, index) => {
-              if (!cell.date) {
+              if (!cell.date)
                 return <div key={`empty-${index}`} className="h-14 rounded-xl bg-slate-100" />;
-              }
 
               const hasEvents = events.some((event) => event.date === cell.date);
               const isSelected = selectedDate === cell.date;
@@ -225,11 +233,10 @@ export default function CalendarPage() {
                   key={cell.date}
                   type="button"
                   onClick={() => setSelectedDate(cell.date!)}
-                  className={`h-14 rounded-xl border text-sm transition ${
-                    isSelected
-                      ? "border-slate-900 bg-slate-900/90 text-white shadow-lg"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
-                  }`}
+                  className={`h-14 rounded-xl border text-sm transition ${isSelected
+                    ? "border-slate-900 bg-slate-900/90 text-white shadow-lg"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                    }`}
                 >
                   <div className="flex h-full flex-col items-center justify-center gap-1">
                     <span>{Number(cell.date.slice(-2))}</span>
@@ -241,15 +248,12 @@ export default function CalendarPage() {
           </div>
         </Card>
 
+        {/* 🗒️ Lista do dia */}
         <Card className="flex h-full flex-col overflow-hidden shadow-sm">
           <div className="border-b border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Eventos do dia</h2>
             <p className="text-sm text-slate-500">
-              {new Date(selectedDate).toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "2-digit",
-                month: "long",
-              })}
+              {format(parseISO(selectedDate), "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
           </div>
 
@@ -283,59 +287,68 @@ export default function CalendarPage() {
         </Card>
       </div>
 
+      {/* 💬 Dialog de criação/edição */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle>
               {editingId ? "Editar evento" : "Novo evento"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Data</Label>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Título</Label>
               <Input
-                id="date"
+                autoFocus
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Ex: Postagem de campanha, Reunião, Entrega..."
+              />
+            </div>
+
+            <div>
+              <Label>Data</Label>
+              <Input
                 type="date"
                 value={form.date}
-                onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="title">Título</Label>
-              <Input
-                id="title"
-                value={form.title}
-                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notas</Label>
+            <div>
+              <Label>Notas</Label>
               <Textarea
-                id="notes"
                 value={form.notes}
-                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                rows={4}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Anotações, responsáveis, links ou detalhes adicionais"
+                className="min-h-[90px]"
               />
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex justify-between pt-4">
             {editingId && (
-              <Button variant="ghost" className="text-red-600" onClick={handleDelete}>
-                Remover
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Excluir
               </Button>
             )}
-            <div className="flex-1" />
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>{editingId ? "Salvar" : "Criar"}</Button>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                {editingId ? "Salvar alterações" : "Criar evento"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+

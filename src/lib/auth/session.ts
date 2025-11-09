@@ -1,17 +1,17 @@
-"use server";
+'use server'
 
-import { createServerSupabase } from "@/lib/supabase/server";
+import { createClient } from '@/lib/supabase/server'
 
 export async function getSessionProfile() {
-  const supabase = await createServerSupabase();
+  const supabase = await createClient()
   const {
     data: { user },
     error: userError,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser()
 
   if (userError || !user) {
     if (userError) {
-      console.error("Erro ao recuperar sessão do usuário:", userError);
+      console.error('Erro ao recuperar sessão do usuário:', userError)
     }
 
     return {
@@ -19,18 +19,18 @@ export async function getSessionProfile() {
       user: null,
       orgId: null,
       role: null as string | null,
-    };
+    }
   }
 
   const { data: member, error: memberError } = await supabase
-    .from("app_members")
-    .select("id, org_id, role, full_name, status")
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
+    .from('app_members')
+    .select('id, org_id, role, full_name, status')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
 
   if (memberError) {
-    console.error("Erro ao buscar membro:", memberError);
+    console.error('Erro ao buscar membro:', memberError)
   }
 
   return {
@@ -38,5 +38,5 @@ export async function getSessionProfile() {
     user,
     orgId: member?.org_id ?? null,
     role: member?.role ?? null,
-  };
+  }
 }

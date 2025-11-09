@@ -1,20 +1,32 @@
-import { getBrowserClient } from '@/lib/supabase/browser'
+import { createClient } from '@/lib/supabase/browser'
+import { SyncedTable, TableMap } from '@/types/tables'
 
-export async function fetchInitialData<T>(
-  table: string,
-  orgId?: string | null
-): Promise<T[]> {
-  const supabase = getBrowserClient()
+/**
+ * Busca os dados iniciais de uma tabela específica para a organização atual.
+ * O tipo de retorno é automaticamente inferido a partir da tabela passada.
+ */
+export async function fetchInitialData<K extends SyncedTable>(
+  table: K,
+  orgId: string
+): Promise<TableMap[K][]> {
+  const supabase = createClient()
+
+  // 👇 Corrige nomes que mudaram
+  const actualTable =
+    table === 'org_client_stats' ? 'org_client_stats_view' : table
 
   const { data, error } = await supabase
-    .from(table)
+    .from(actualTable as string)
     .select('*')
-    .eq('org_id', orgId ?? '')
+    .eq('org_id', orgId)
 
   if (error) {
-    console.error(`[Supabase] Erro ao buscar ${table}:`, error)
+    console.error(
+      `Erro ao buscar dados da tabela "${actualTable}":`,
+      error.message
+    )
     return []
   }
 
-  return data ?? []
+  return (data ?? []) as TableMap[K][]
 }

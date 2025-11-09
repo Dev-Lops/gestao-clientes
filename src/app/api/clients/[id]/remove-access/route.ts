@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function POST(
@@ -6,7 +6,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id } = params
-  const supabase = await createServerSupabase()
+  const supabase = await createClient()
 
   const { data: client } = await supabase
     .from('app_clients')

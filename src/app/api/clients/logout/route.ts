@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 export async function POST() {
   try {
     const supabase = await createClient()
+
     const { error } = await supabase.auth.signOut()
 
     if (error) {
@@ -11,10 +12,9 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // ✅ Tudo certo: resposta simples (sem redirecionar ainda)
-    return NextResponse.json(
-      { message: 'Sessão encerrada com sucesso.' },
-      { status: 200 }
+    // Redireciona pro login após logout
+    return NextResponse.redirect(
+      new URL('/login', process.env.NEXT_PUBLIC_SITE_URL)
     )
   } catch (err) {
     console.error('Erro inesperado no logout:', err)

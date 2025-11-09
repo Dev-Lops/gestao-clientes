@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   // Cria uma resposta que redireciona para /setup
   const response = NextResponse.redirect(`${origin}/setup`)
 
-  const supabase = await createServerSupabase()
+  const supabase = await createClient()
 
   // 🔹 Troca o código OAuth por uma sessão válida
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(

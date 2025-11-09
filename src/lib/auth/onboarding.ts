@@ -1,9 +1,9 @@
 import { parseRole, type Role } from '@/lib/auth/rbac'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 
 import type { User } from '@supabase/supabase-js'
 
-type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabase>>
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 type ServerClient = SupabaseServerClient
 
 async function syncUserRoleMetadata(

@@ -1,11 +1,12 @@
 'use server'
 
 import { getSessionProfile } from '@/lib/auth/session'
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
+
 import { revalidatePath } from 'next/cache'
 
 export async function deleteClientAction(formData: FormData) {
-  const supabase = await createServerSupabase()
+  const supabase = await createClient()
   const session = await getSessionProfile()
 
   if (!session.user) throw new Error('Usuário não autenticado.')

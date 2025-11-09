@@ -1,27 +1,14 @@
+import type { SyncedTable, TableMap } from '@/types/tables'
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
-// Todas as tabelas sincronizadas
-export type SyncedTable =
-  | 'app_clients'
-  | 'app_tasks'
-  | 'app_content_calendar'
-  | 'org_client_stats'
-
-export interface BaseRow {
-  id?: string
-  org_id?: string | null
-  [key: string]: unknown
-}
-
 interface AppState {
   orgId: string | null
-  tables: Record<SyncedTable, BaseRow[]>
-
+  tables: { [K in SyncedTable]: TableMap[K][] }
   setOrgId: (orgId: string | null) => void
-  setTable: (table: SyncedTable, rows: BaseRow[]) => void
-  upsertRow: (table: SyncedTable, row: BaseRow) => void
-  removeRow: (table: SyncedTable, id: string) => void
+  setTable: <K extends SyncedTable>(table: K, rows: TableMap[K][]) => void
+  upsertRow: <K extends SyncedTable>(table: K, row: TableMap[K]) => void
+  removeRow: <K extends SyncedTable>(table: K, id: string) => void
 }
 
 export const useAppStore = create<AppState>()(
@@ -44,7 +31,7 @@ export const useAppStore = create<AppState>()(
 
       upsertRow: (table, row) =>
         set((state) => {
-          const existing = state.tables[table] || []
+          const existing = state.tables[table]
           const index = existing.findIndex((r) => r.id === row.id)
 
           const updated =

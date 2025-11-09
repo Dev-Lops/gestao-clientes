@@ -1,4 +1,5 @@
-// app/(app)/admin/members/page.tsx
+"use client";
+
 import { inviteStaffAction, updateMemberRoleAction } from "@/app/(app)/admin/members/actions";
 import { DeleteMemberButton } from "@/components/DeleteMemberButton";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { parseRole, type Role } from "@/lib/auth/rbac";
-import { getSessionProfile } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
-import { Shield, User, Users } from "lucide-react";
-import { redirect } from "next/navigation";
+import { Clock, Shield, User, Users } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import useSWR from "swr";
 
 // 🔹 Mapas de papéis
+type Role = "owner" | "staff" | "client" | "guest";
+
 const ROLE_LABEL: Record<Role, string> = {
   owner: "Proprietário",
   staff: "Equipe",
@@ -26,113 +29,88 @@ const ROLE_DESCRIPTION: Record<Exclude<Role, "guest">, string> = {
   client: "Acesso restrito à própria área",
 };
 
-const ROLE_ICON: Record<Role, React.ElementType> = {
-  owner: Shield,
-  staff: Users,
-  client: User,
-  guest: User,
-};
+// 🔹 Fetcher para SWR
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-// 🔹 Tipos
-type MemberRow = {
+// 🔹 Tipagem do membro
+type Member = {
   id: string;
   user_id: string | null;
   role: string | null;
   status: string | null;
-  invited_email: string | null;
   full_name?: string | null;
+  email?: string | null;
   created_at: string | null;
-  app_clients?: { id: string; name: string | null }[] | null;
+  org_id?: string | null;
 };
 
-type SupabaseMembersResponse = {
-  data: MemberRow[] | null;
-  error: { message?: string } | null;
-};
-
-// 🔹 Normalizador
-function normalizeMembers(rows?: MemberRow[] | null) {
-  if (!rows?.length) return [];
-
-  return rows.map((row) => {
-    const displayName =
-      row.full_name?.trim() ||
-      row.invited_email?.split("@")[0] ||
-      "Usuário";
-
-    const email = row.invited_email?.trim() || "—";
-
-    return {
-      id: row.id,
-      displayName,
-      email,
-      role: parseRole(row.role ?? "client"),
-      clientName: row.app_clients?.[0]?.name ?? null,
-      status: row.status || (row.user_id ? "Ativo" : "Convite pendente"),
-      createdAt: row.created_at,
-    };
-  });
-}
-
-// 🔹 Formata datas
+// 🔹 Utilitário de data
 function formatDate(value: string | null): string {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("pt-BR");
 }
 
-// 🔹 Página principal
-export default async function MembersAdminPage() {
-  const { supabase, role, orgId } = await getSessionProfile();
-  if (role !== "owner") redirect("/");
+export default function MembersAdminPage() {
+  const { data, error, isLoading, mutate } = useSWR("/api/members", fetcher);
+  const [submitting, setSubmitting] = useState(false);
 
-  // 🔸 Busca sem join no schema auth (apenas tabelas públicas)
-  const { data: membersData, error } = (await supabase
-    .from("app_members")
-    .select(`
-      id,
-      user_id,
-      role,
-      status,
-      invited_email,
-      full_name,
-      created_at,
-      app_clients (id, name)
-    `)
-    .eq("org_id", orgId)
-    .order("created_at", { ascending: true })) as unknown as SupabaseMembersResponse;
+  // 🕒 Carregamento elegante
+  if (isLoading)
+    return (
+      <div className="flex flex-col items-center justify-center h-[70vh] text-slate-500">
+        <Clock className="h-6 w-6 mb-3 animate-spin" />
+        Carregando informações...
+      </div>
+    );
 
-  if (error) {
-    console.error("Erro ao carregar membros:", error.message);
-    return <p className="text-red-500">Erro ao carregar membros.</p>;
-  }
+  // 🧨 Erro de carregamento
+  if (error || !data?.data)
+    return (
+      <div className="p-10 text-center text-red-600 font-medium">
+        Erro ao carregar membros.
+      </div>
+    );
 
-  const members = normalizeMembers(membersData);
+  const members: Member[] = data.data;
   const totalByRole = members.reduce<Record<Role, number>>(
     (acc, member) => {
-      acc[member.role] = (acc[member.role] || 0) + 1;
+      const role = (member.role as Role) || "client";
+      acc[role] = (acc[role] || 0) + 1;
       return acc;
     },
     { owner: 0, staff: 0, client: 0, guest: 0 }
   );
 
-  // 🔸 Renderização
+  // 🔹 Envio de convites
+  async function handleInvite(formData: FormData) {
+    setSubmitting(true);
+    try {
+      await inviteStaffAction(formData);
+      toast.success("Convite enviado com sucesso!");
+      mutate(); // atualiza a lista
+    } catch {
+      toast.error("Erro ao enviar convite.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-8 md:space-y-10">
-      {/* CONVITE */}
-      <Card className="rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
-        <div className="border-b border-slate-100 px-6 py-5 bg-white rounded-t-2xl">
+      {/* 📨 CONVITE */}
+      <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 px-6 py-5 bg-slate-50 rounded-t-2xl">
           <h2 className="text-lg font-semibold text-slate-900">
             Convidar novo membro
           </h2>
           <p className="text-sm text-slate-500">
-            Envie um convite por e-mail para liberar acesso como cliente ou
-            membro da equipe.
+            Envie um convite por e-mail para liberar acesso como cliente ou membro da equipe.
           </p>
         </div>
 
         <form
-          action={inviteStaffAction}
+          action={handleInvite}
           className="grid gap-4 px-6 py-6 sm:grid-cols-2 lg:grid-cols-[2fr_1.4fr_1fr_auto]"
         >
           <div>
@@ -143,12 +121,20 @@ export default async function MembersAdminPage() {
               type="email"
               required
               placeholder="pessoa@empresa.com"
+              className="border border-slate-300 bg-white"
             />
           </div>
+
           <div>
             <Label htmlFor="invite-name">Nome (opcional)</Label>
-            <Input id="invite-name" name="full_name" placeholder="Nome completo" />
+            <Input
+              id="invite-name"
+              name="full_name"
+              placeholder="Nome completo"
+              className="border border-slate-300 bg-white"
+            />
           </div>
+
           <div>
             <Label htmlFor="invite-role">Papel</Label>
             <select
@@ -157,50 +143,54 @@ export default async function MembersAdminPage() {
               title="Selecionar papel"
               aria-label="Selecionar papel"
               defaultValue="staff"
-              className="h-11 w-full rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900"
+              className="h-11 w-full rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500"
             >
               <option value="staff">Equipe</option>
+              <option value="client">Cliente</option>
             </select>
           </div>
+
           <div className="flex items-end">
-            <Button type="submit" className="w-full font-medium">
-              Enviar convite
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full font-medium bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {submitting ? "Enviando..." : "Enviar convite"}
             </Button>
           </div>
         </form>
       </Card>
 
-      {/* RESUMO */}
+      {/* 📊 RESUMO DE ROLES */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {(Object.keys(totalByRole) as Role[])
-          .filter((r) => r !== "guest")
-          .map((roleKey) => {
-            const Icon = ROLE_ICON[roleKey];
-            return (
-              <Card
-                key={roleKey}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.15em] text-slate-400">
-                      {ROLE_LABEL[roleKey]}
-                    </p>
-                    <p className="text-3xl font-semibold text-slate-900">
-                      {totalByRole[roleKey]}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {ROLE_DESCRIPTION[roleKey as Exclude<Role, "guest">]}
-                    </p>
-                  </div>
-                  <Icon className="w-6 h-6 text-slate-400" />
+        {(["owner", "staff", "client"] as Role[]).map((roleKey) => {
+          const Icon =
+            roleKey === "owner" ? Shield : roleKey === "staff" ? Users : User;
+          const count = totalByRole[roleKey];
+          return (
+            <Card
+              key={roleKey}
+              className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.15em] text-slate-400">
+                    {ROLE_LABEL[roleKey]}
+                  </p>
+                  <p className="text-3xl font-semibold text-slate-900">{count}</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {ROLE_DESCRIPTION[roleKey as Exclude<Role, "guest">]}
+                  </p>
                 </div>
-              </Card>
-            );
-          })}
+                <Icon className="w-6 h-6 text-slate-400" />
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* LISTA */}
+      {/* 👥 LISTA DE MEMBROS */}
       <Card className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 bg-slate-50">
           <h2 className="text-lg font-semibold text-slate-900">
@@ -220,51 +210,40 @@ export default async function MembersAdminPage() {
           </p>
         ) : (
           <div className="divide-y divide-slate-100">
-            {members.map((member) => (
+            {members.map((m) => (
               <div
-                key={member.id}
+                key={m.id}
                 className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-6 py-5"
               >
                 <div>
                   <p className="text-sm font-medium text-slate-900">
-                    {member.displayName}
+                    {m.full_name || m.email?.split("@")[0] || "Usuário"}
                   </p>
-                  <p className="text-xs text-slate-500">{member.email}</p>
-                  {member.clientName && (
-                    <p className="text-xs text-slate-400">
-                      Cliente: {member.clientName}
-                    </p>
-                  )}
+                  <p className="text-xs text-slate-500">{m.email || "—"}</p>
                   <p className="mt-1 text-xs text-slate-400">
-                    Desde {formatDate(member.createdAt)} • {member.status}
+                    Desde {formatDate(m.created_at)} • {m.status || "—"}
                   </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end md:justify-start">
+                <div className="flex flex-wrap items-center gap-3 justify-end md:justify-start">
                   <form
                     action={updateMemberRoleAction}
                     className="flex items-center gap-2"
                   >
-                    <input type="hidden" name="member_id" value={member.id} />
+                    <input type="hidden" name="member_id" value={m.id} />
                     <select
                       name="role"
                       title="Alterar papel do membro"
                       aria-label="Alterar papel do membro"
-                      defaultValue={member.role}
+                      defaultValue={m.role || "client"}
                       className={cn(
-                        "h-10 min-w-[130px] rounded-full border border-slate-200 bg-white",
-                        "px-4 text-sm font-medium text-slate-700",
-                        "shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-slate-900",
-                        "hover:border-slate-300 hover:bg-slate-50"
+                        "h-10 min-w-[130px] rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all",
+                        "focus:outline-none focus:ring-2 focus:ring-indigo-600 hover:border-slate-300 hover:bg-slate-50"
                       )}
                     >
-                      {(Object.keys(ROLE_LABEL) as Role[])
-                        .filter((r) => r !== "guest")
-                        .map((value) => (
-                          <option key={value} value={value}>
-                            {ROLE_LABEL[value]}
-                          </option>
-                        ))}
+                      <option value="owner">Proprietário</option>
+                      <option value="staff">Equipe</option>
+                      <option value="client">Cliente</option>
                     </select>
                     <Button
                       type="submit"
@@ -276,10 +255,10 @@ export default async function MembersAdminPage() {
                     </Button>
                   </form>
 
-                  {member.role !== "owner" && (
+                  {m.role !== "owner" && (
                     <DeleteMemberButton
-                      memberId={member.id}
-                      displayName={member.displayName}
+                      memberId={m.id}
+                      displayName={m.full_name || m.email || "Usuário"}
                     />
                   )}
                 </div>

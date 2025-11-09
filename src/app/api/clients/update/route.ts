@@ -1,21 +1,68 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json()
-    const supabase = await createServerSupabase()
+    const supabase = await createClient()
+    const body = await req.json()
 
-    const { id, ...rest } = data
+    // 🔐 Verifica usuário autenticado
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { message: 'Sessão expirada. Faça login novamente.' },
+        { status: 401 }
+      )
+    }
+
+    // 🔹 Validação básica
+    if (!body.id) {
+      return NextResponse.json(
+        { message: 'ID do cliente não informado.' },
+        { status: 400 }
+      )
+    }
+
+    // 🔧 Atualiza registro
     const { error } = await supabase
       .from('app_clients')
-      .update(rest)
-      .eq('id', id)
+      .update({
+        name: body.name,
+        status: body.status,
+        plan: body.plan,
+        main_channel: body.main_channel,
+        account_manager: body.account_manager,
+        payment_status: body.payment_status,
+        payment_method: body.payment_method,
+        billing_day: body.billing_day,
+        monthly_ticket: body.monthly_ticket,
+        internal_notes: body.internal_notes,
+        meeting_date: body.meeting_date,
+        payment_date: body.payment_date,
+        progress: body.progress,
+      })
+      .eq('id', body.id)
+      .select('id')
+      .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ Erro ao atualizar cliente:', error.message)
+      return NextResponse.json(
+        { message: 'Erro ao atualizar cliente: ' + error.message },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erro desconhecido'
-    return NextResponse.json({ ok: false, message }, { status: 500 })
+    console.error('❌ Erro inesperado:', err)
+    return NextResponse.json(
+      { message: 'Erro interno no servidor.' },
+      { status: 500 }
+    )
   }
 }

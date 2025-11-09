@@ -1,31 +1,28 @@
-import { getBrowserClient } from '@/lib/supabase/browser'
-import { SyncedTable, useAppStore } from '@/store/appStore'
+import { createClient } from '@/lib/supabase/browser'
+import { useAppStore } from '@/store/appStore'
+import { SyncedTable, TableMap } from '@/types/tables'
+import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { useEffect, useMemo, useRef } from 'react'
 
-type RealtimeOptions<
-  T extends Record<string, unknown> = Record<string, unknown>
-> = {
-  table: SyncedTable
-  orgId?: string | null
-  initialData?: T[]
-}
-
 /**
- * Hook de sincronização em tempo real com Supabase.
- * Atualiza as tabelas no Zustand automaticamente.
+ * Hook genérico para sincronização em tempo real com Supabase.
+ * Mantém as tabelas locais no Zustand sempre atualizadas.
  */
-export function useRealtimeSync<T extends Record<string, unknown>>({
-  table,
-  orgId,
-  initialData,
-}: RealtimeOptions<T>) {
-  const supabase = useMemo(() => getBrowserClient(), [])
+export function useRealtimeSync<K extends SyncedTable>(params: {
+  table: K
+  orgId?: string | null
+  initialData?: TableMap[K][]
+}) {
+  const { table, orgId, initialData } = params
+
+  const supabase = useMemo(() => createClient(), [])
   const setTable = useAppStore((s) => s.setTable)
   const upsertRow = useAppStore((s) => s.upsertRow)
   const removeRow = useAppStore((s) => s.removeRow)
 
   const hydratedRef = useRef(false)
 
+  // Reinicia hidratação ao trocar de tabela/org
   useEffect(() => {
     hydratedRef.current = false
   }, [table, orgId])
@@ -33,35 +30,32 @@ export function useRealtimeSync<T extends Record<string, unknown>>({
   useEffect(() => {
     if (!orgId) return
 
+    // 🔹 Carrega os dados iniciais apenas uma vez
     if (!hydratedRef.current && initialData?.length) {
       setTable(table, initialData)
       hydratedRef.current = true
     }
 
+    // 🔹 Assina os eventos em tempo real do Supabase
     const channel = supabase
       .channel(`realtime_${table}_${orgId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table },
-        (payload: unknown) => {
-          const {
-            eventType,
-            new: newRow,
-            old: oldRow,
-          } = payload as {
-            eventType: 'INSERT' | 'UPDATE' | 'DELETE'
-            new: (T & { org_id?: string | null; id?: string }) | null
-            old: (T & { org_id?: string | null; id?: string }) | null
-          }
+        (payload: RealtimePostgresChangesPayload<TableMap[K]>) => {
+          const { eventType, new: newRow, old: oldRow } = payload
 
+          // DELETE
           if (eventType === 'DELETE') {
-            if (oldRow?.org_id && oldRow.org_id !== orgId) return
-            if (oldRow?.id) removeRow(table, oldRow.id)
+            if (oldRow && 'org_id' in oldRow && oldRow.org_id !== orgId) return
+            if (oldRow && 'id' in oldRow && oldRow.id)
+              removeRow(table, oldRow.id)
             return
           }
 
-          if (newRow?.org_id && newRow.org_id !== orgId) return
-          if (newRow?.id) upsertRow(table, newRow)
+          // INSERT / UPDATE
+          if (newRow && 'org_id' in newRow && newRow.org_id !== orgId) return
+          if (newRow && 'id' in newRow && newRow.id) upsertRow(table, newRow)
         }
       )
       .subscribe((status) => {

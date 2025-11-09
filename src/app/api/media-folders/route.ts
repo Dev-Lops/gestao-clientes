@@ -1,4 +1,4 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 /**
@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server'
  * Usa o cliente de servidor (com cookies HttpOnly do Supabase)
  */
 export async function GET() {
-  const supabase = await createServerSupabase()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('app_media_items')

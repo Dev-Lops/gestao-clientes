@@ -1,35 +1,27 @@
-import type { CookieOptions } from '@supabase/ssr'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createServerSupabase() {
-  const cookieStore = await cookies()
+export async function createClient() {
+  const cookieStore = await cookies() // 👈 correção: precisa de await
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string): string | undefined {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions): void {
-          try {
-            cookieStore.set({ name, value, ...options })
-          } catch {
-            // Ignora em runtimes onde cookies não são mutáveis
-          }
-        },
-        remove(name: string, options: CookieOptions): void {
-          try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch {
-            // Ignora erro de mutação de cookie em Edge
-          }
-        },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  return createServerClient(url, anonKey, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
       },
-    }
-  )
-
-  return supabase
+      set(name: string, value: string, options: CookieOptions) {
+        try {
+          cookieStore.set({ name, value, ...options })
+        } catch {}
+      },
+      remove(name: string, options: CookieOptions) {
+        try {
+          cookieStore.set({ name, value: '', ...options })
+        } catch {}
+      },
+    },
+  })
 }
