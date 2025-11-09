@@ -1,15 +1,16 @@
-"use server";
+'use server';
 
-import { roleSatisfies } from "@/lib/auth/rbac";
-import { getSessionProfile } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { getSessionProfile } from '@/lib/auth/session';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
+import { can, isOwner } from '@/lib/auth/rbac';
 
 /* ----------------------------------------------------------
    🔹 Tipos auxiliares
@@ -34,7 +35,7 @@ interface NewClientPayload {
    🔹 Server Action — Criação de cliente com tratamento aprimorado
 ---------------------------------------------------------- */
 export async function createClientAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
 
   const {
     data: { user },
@@ -42,72 +43,66 @@ export async function createClientAction(formData: FormData): Promise<void> {
   } = await supabase.auth.getUser();
 
   if (userError || !user)
-    throw new Error("Sessão expirada. Faça login novamente.");
+    throw new Error('Sessão expirada. Faça login novamente.');
 
-  function normalizeDate(value: FormDataEntryValue | null): string | null {
-    return value && String(value).trim() !== "" ? String(value) : null;
-  }
-
-  function normalizeText(value: FormDataEntryValue | null): string | null {
-    return value && String(value).trim() !== "" ? String(value).trim() : null;
-  }
-
-  const payload: NewClientPayload = {
-    name: String(formData.get("name") ?? "").trim(),
-    plan: (formData.get("plan") as string) || "Gestão",
-    main_channel: (formData.get("main_channel") as string) || "Instagram",
-    start_date: normalizeDate(formData.get("start_date")),
-    account_manager: normalizeText(formData.get("account_manager")),
-    monthly_ticket: formData.get("monthly_ticket")
-      ? Number(formData.get("monthly_ticket"))
-      : null,
-    billing_day: formData.get("billing_day")
-      ? Number(formData.get("billing_day"))
-      : null,
-    payment_method: normalizeText(formData.get("payment_method")),
-    payment_status: normalizeText(formData.get("payment_status")),
-    last_meeting_at: normalizeDate(formData.get("last_meeting_at")),
-    next_delivery: normalizeDate(formData.get("next_delivery")),
-    progress: formData.get("progress")
-      ? Number(formData.get("progress"))
-      : null,
-    internal_notes: normalizeText(formData.get("internal_notes")),
+  const normalize = (value: FormDataEntryValue | null): string | null => {
+    return value && String(value).trim() !== '' ? String(value).trim() : null;
   };
 
+  const toNumber = (value: FormDataEntryValue | null): number | null => {
+    return value ? Number(value) : null;
+  };
+
+  const payload: NewClientPayload = {
+    name: String(formData.get('name') ?? '').trim(),
+    plan: (formData.get('plan') as string) || 'Gestão',
+    main_channel: (formData.get('main_channel') as string) || 'Instagram',
+    start_date: normalize(formData.get('start_date')),
+    account_manager: normalize(formData.get('account_manager')),
+    monthly_ticket: toNumber(formData.get('monthly_ticket')),
+    billing_day: toNumber(formData.get('billing_day')),
+    payment_method: normalize(formData.get('payment_method')),
+    payment_status: normalize(formData.get('payment_status')),
+    last_meeting_at: normalize(formData.get('last_meeting_at')),
+    next_delivery: normalize(formData.get('next_delivery')),
+    progress: toNumber(formData.get('progress')),
+    internal_notes: normalize(formData.get('internal_notes')),
+  };
 
   if (!payload.name || payload.name.length < 3)
-    throw new Error("Informe um nome válido para o cliente.");
+    throw new Error('Informe um nome válido para o cliente.');
 
+  // 🔹 Encontra a organização ativa do usuário
   const { data: member } = await supabase
-    .from("app_members")
-    .select("org_id")
-    .eq("user_id", user.id)
-    .eq("status", "active")
+    .from('app_members')
+    .select('org_id')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
     .maybeSingle();
 
   let orgId = member?.org_id ?? null;
 
   if (!orgId) {
     const { data: ownerOrg } = await supabase
-      .from("app_orgs")
-      .select("id")
-      .eq("owner_user_id", user.id)
+      .from('app_orgs')
+      .select('id')
+      .eq('owner_user_id', user.id)
       .maybeSingle();
 
     orgId = ownerOrg?.id ?? null;
   }
-  if (!orgId) throw new Error("Nenhuma organização vinculada encontrada.");
 
   if (!orgId)
-    throw new Error("Não foi possível identificar a organização do usuário.");
+    throw new Error('Não foi possível identificar a organização do usuário.');
 
+  // 🔹 Inserção no Supabase
   const { data, error } = await supabase
-    .from("app_clients")
+    .from('app_clients')
     .insert({
       org_id: orgId,
       name: payload.name,
       plan: payload.plan,
-      status: "Novo",
+      status: 'Novo',
       main_channel: payload.main_channel,
       created_by: user.id,
       start_date: payload.start_date,
@@ -121,30 +116,30 @@ export async function createClientAction(formData: FormData): Promise<void> {
       progress: payload.progress,
       internal_notes: payload.internal_notes,
     })
-    .select("id")
+    .select('id')
     .maybeSingle();
 
   if (error) {
-    console.error("❌ Supabase insert error:", error.message, error.details, error.hint);
-    throw new Error("Erro ao criar cliente. Tente novamente.");
+    console.error('❌ Supabase insert error:', error.message, error.details);
+    throw new Error('Erro ao criar cliente. Tente novamente.');
   }
 
-  console.log("✅ Cliente criado com sucesso:", data);
+  console.log('✅ Cliente criado com sucesso:', data);
+  redirect(`/clients/${data?.id}/info`);
 }
+
 /* ----------------------------------------------------------
    🔹 Página — Formulário de criação com UX refinada
 ---------------------------------------------------------- */
 export default async function NewClientPage() {
   const session = await getSessionProfile();
 
-  if (!session.user) redirect("/login");
-  if (!roleSatisfies(session.role as "client" | "staff" | "owner", "staff")) {
-    redirect("/unauthorized?from=/clients/new");
+  if (!session.user) redirect('/login');
+  if (!can(session.role as 'client' | 'staff' | 'owner', 'staff')) {
+    redirect('/unauthorized?from=/clients/new');
   }
 
-  const isOwner = session.role === "owner";
-  if (session.role !== "owner") redirect("/unauthorized");
-
+  const isOwnerRole = isOwner(session.role);
 
   return (
     <div className="max-w-2xl mx-auto py-10">
@@ -154,7 +149,8 @@ export default async function NewClientPage() {
             Cadastrar novo cliente
           </h1>
           <p className="text-sm text-slate-500 leading-relaxed">
-            Registre um novo cliente e inclua informações contratuais, operacionais e financeiras.
+            Registre um novo cliente e inclua informações contratuais,
+            operacionais e financeiras.
           </p>
         </header>
 
@@ -180,7 +176,7 @@ export default async function NewClientPage() {
               <div>
                 <Label htmlFor="plan">Plano</Label>
                 <select
-                  title="plan"
+                  title='plan'
                   id="plan"
                   name="plan"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
@@ -194,7 +190,7 @@ export default async function NewClientPage() {
               <div>
                 <Label htmlFor="main_channel">Canal principal</Label>
                 <select
-                  title="channel"
+                  title='main'
                   id="main_channel"
                   name="main_channel"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
@@ -268,7 +264,7 @@ export default async function NewClientPage() {
           </section>
 
           {/* 🔹 Seção: Gestão Financeira (visível apenas para owner) */}
-          {isOwner && (
+          {isOwnerRole && (
             <section className="space-y-3 border-t border-slate-200 pt-5">
               <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
                 Gestão financeira
@@ -332,7 +328,6 @@ export default async function NewClientPage() {
             </section>
           )}
 
-          {/* 🔹 Botão de envio */}
           <div className="pt-3">
             <Button
               type="submit"

@@ -6,7 +6,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -18,15 +17,24 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import { createClient } from "@/lib/supabase/browser";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type { ContentCalendarItem } from "@/types/tables";
 
+// Ícones (lucide-react)
+import { Instagram, Megaphone, Music2, Users2 } from "lucide-react";
+
 const EMPTY_EVENTS: ContentCalendarItem[] = [];
 
-// ✅ Usa date-fns para garantir formato estável (sem UTC)
 function formatLocal(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
@@ -35,7 +43,6 @@ function normalizeDate(dateStr: string): string {
   return format(parseISO(dateStr), "yyyy-MM-dd");
 }
 
-// ✅ Cria data em UTC fixo (12h) para salvar no Supabase
 function toUTC(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
   const utc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
@@ -46,10 +53,11 @@ type CalendarForm = {
   date: string;
   title: string;
   notes: string;
+  channel: string;
 };
 
 export default function CalendarPage() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = supabaseBrowser;
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
   const events =
@@ -63,10 +71,15 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(formatLocal(new Date()));
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<CalendarForm>({ date: "", title: "", notes: "" });
+  const [form, setForm] = useState<CalendarForm>({
+    date: "",
+    title: "",
+    notes: "",
+    channel: "",
+  });
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Carregar eventos
+  // 🔄 Carregar eventos
   const loadEvents = useMemo(
     () => async () => {
       if (!orgId) return;
@@ -135,34 +148,44 @@ export default function CalendarPage() {
 
   function openCreate(dateStr: string) {
     setEditingId(null);
-    setForm({ date: dateStr, title: "", notes: "" });
+    setForm({ date: dateStr, title: "", notes: "", channel: "" });
     setOpen(true);
   }
 
   function openEdit(evt: ContentCalendarItem) {
     setEditingId(evt.id);
-    setForm({ date: evt.date, title: evt.title ?? "", notes: evt.notes ?? "" });
+    setForm({
+      date: evt.date ?? "",
+      title: evt.title ?? "",
+      notes: evt.notes ?? "",
+      channel: evt.channel ?? "",
+    });
     setOpen(true);
   }
 
   async function handleSave() {
     if (!form.title || !form.date) return toast.error("Preencha título e data.");
     if (!orgId || !userId) return toast.error("Sessão inválida.");
+    if (!form.channel) return toast.error("Selecione um canal.");
 
     const payload = {
-      id: editingId ?? crypto.randomUUID(),
       org_id: orgId,
       created_by: userId,
       event_date: toUTC(form.date),
       title: form.title,
       notes: form.notes || null,
+      channel: form.channel,
     };
 
     const { data, error } = editingId
       ? await supabase.from("app_content_calendar").update(payload).eq("id", editingId).select()
       : await supabase.from("app_content_calendar").insert(payload).select();
 
-    if (error) return toast.error("Erro ao salvar evento.");
+    if (error) {
+      console.error("Erro ao salvar evento:", error);
+      toast.error("Erro ao salvar evento.");
+      return;
+    }
 
     const newEvent = {
       ...data[0],
@@ -211,8 +234,8 @@ export default function CalendarPage() {
         <Button onClick={() => openCreate(formatLocal(new Date()))}>Novo evento</Button>
       </header>
 
+      {/* 🗓️ Grade mensal */}
       <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        {/* 🗓️ Grade mensal */}
         <Card className="p-6 shadow-sm">
           <div className="grid grid-cols-7 gap-2 text-center text-xs font-medium uppercase tracking-wide text-slate-500">
             {"dom seg ter qua qui sex sáb".split(" ").map((day) => (
@@ -248,7 +271,7 @@ export default function CalendarPage() {
           </div>
         </Card>
 
-        {/* 🗒️ Lista do dia */}
+        {/* 🗒️ Lista diária */}
         <Card className="flex h-full flex-col overflow-hidden shadow-sm">
           <div className="border-b border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Eventos do dia</h2>
@@ -276,6 +299,9 @@ export default function CalendarPage() {
                     className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
                   >
                     <h3 className="font-semibold text-slate-900">{event.title ?? "Sem título"}</h3>
+                    {event.channel && (
+                      <p className="text-xs text-indigo-600 mt-1 capitalize">{event.channel}</p>
+                    )}
                     {event.notes && (
                       <p className="mt-1 text-sm text-slate-500 line-clamp-2">{event.notes}</p>
                     )}
@@ -289,11 +315,9 @@ export default function CalendarPage() {
 
       {/* 💬 Dialog de criação/edição */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
+        <DialogContent className="max-w-md rounded-2xl p-6 bg-white shadow-xl border border-slate-200">
           <DialogHeader>
-            <DialogTitle>
-              {editingId ? "Editar evento" : "Novo evento"}
-            </DialogTitle>
+            <DialogTitle>{editingId ? "Editar evento" : "Novo evento"}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -303,9 +327,46 @@ export default function CalendarPage() {
                 autoFocus
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Ex: Postagem de campanha, Reunião, Entrega..."
+                placeholder="Ex: Postagem, reunião, entrega..."
               />
             </div>
+            
+            <div>
+              <Label>Canal</Label>
+              <Select
+                value={form.channel}
+                onValueChange={(v) => setForm({ ...form, channel: v })}
+              >
+                <SelectTrigger
+                  className="bg-white border border-slate-300 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
+                >
+                  <SelectValue placeholder="Selecione o canal" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-slate-200 shadow-md rounded-xl">
+                  <SelectItem value="instagram">
+                    <div className="flex items-center gap-2">
+                      <Instagram size={16} className="text-pink-600" /> Instagram
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="tiktok">
+                    <div className="flex items-center gap-2">
+                      <Music2 size={16} className="text-black" /> TikTok
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="reunião">
+                    <div className="flex items-center gap-2">
+                      <Users2 size={16} className="text-blue-600" /> Reunião
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="campanha">
+                    <div className="flex items-center gap-2">
+                      <Megaphone size={16} className="text-orange-500" /> Campanha
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
 
             <div>
               <Label>Data</Label>
@@ -341,7 +402,10 @@ export default function CalendarPage() {
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={handleSave} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Button
+                onClick={handleSave}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
                 {editingId ? "Salvar alterações" : "Criar evento"}
               </Button>
             </div>
@@ -351,4 +415,3 @@ export default function CalendarPage() {
     </div>
   );
 }
-

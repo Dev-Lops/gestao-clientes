@@ -1,39 +1,33 @@
-export interface ClientUpdatePayload {
-  id?: string
-  name?: string
-  status?: string
-  plan?: string
-  main_channel?: string
-  account_manager?: string | null
-  payment_status?: string | null
-  payment_method?: string | null
-  billing_day?: number | null
-  monthly_ticket?: number | null
-  internal_notes?: string | null
-  meeting_date?: string | null
-  payment_date?: string | null
-  progress?: number | null
-}
+'use server'
+
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/lib/auth/session'
+import type { ActionResponse } from '@/types/actions'
+import type { AppClient } from '@/types/client'
 
 export async function updateClientInfo(
-  updatedData: ClientUpdatePayload
-): Promise<{ ok: boolean; message?: string }> {
-  try {
-    const res = await fetch('/api/client/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedData),
-    })
+  data: Partial<AppClient>
+): Promise<ActionResponse> {
+  const supabase = await createServerSupabaseClient()
+  const session = await getSessionProfile()
 
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.message || 'Falha ao atualizar cliente')
-    }
+  if (!session.user)
+    return { success: false, message: 'Usuário não autenticado.' }
 
-    return { ok: true }
-  } catch (err) {
-    console.error('Erro em updateClientInfo:', err)
-    const message = err instanceof Error ? err.message : 'Erro desconhecido'
-    return { ok: false, message }
+  if (!data.id)
+    return { success: false, message: 'ID do cliente não informado.' }
+
+  const { id, ...fields } = data
+
+  const { error } = await supabase
+    .from('app_clients')
+    .update(fields)
+    .eq('id', id)
+
+  if (error) {
+    console.error('Erro ao atualizar cliente:', error.message)
+    return { success: false, message: 'Erro ao atualizar cliente.' }
   }
+
+  return { success: true, message: 'Informações do cliente atualizadas!' }
 }

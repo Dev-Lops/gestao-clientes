@@ -1,16 +1,10 @@
-// app/(app)/clients/[id]/media/new/page.tsx
-
 import MediaNewForm from "@/app/(app)/clients/[id]/media/new/MediaNewForm";
 
-interface MediaNewPageProps {
-  params: { id: string };
-  searchParams: { folder?: string; sub?: string };
-}
-
-export default function MediaNewPage({ params, searchParams }: MediaNewPageProps) {
+export default async function MediaNewPage({ params, searchParams }: { params: { id: string }; searchParams: Promise<{ folder?: string; sub?: string }> }) {
   const { id } = params;
-  const folder = searchParams.folder ?? "";
-  const subfolder = searchParams.sub ?? "";
+  const resolved = await searchParams;
+  const folder = resolved.folder ?? "";
+  const subfolder = resolved.sub ?? "";
 
   return (
     <div className="flex justify-center mt-10">

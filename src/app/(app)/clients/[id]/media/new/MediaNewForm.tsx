@@ -21,11 +21,11 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [title, setTitle] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Gerar preview
+  // Gera preview
   useEffect(() => {
     if (file) {
       const url = URL.createObjectURL(file);
@@ -35,10 +35,10 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
     setPreviewUrl(null);
   }, [file]);
 
-  // Upload
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!file || !folder) return setError("Selecione um arquivo e uma pasta válida.");
+    if (!file) return toast.error("Selecione um arquivo para enviar.");
+    if (!folder) return toast.error("Selecione uma pasta válida.");
 
     try {
       setIsUploading(true);
@@ -52,7 +52,6 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       if (subfolder) formData.append("subfolder", subfolder);
       formData.append("title", title || file.name);
 
-      // Envia o arquivo com progresso
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/upload");
@@ -69,10 +68,11 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
         xhr.send(formData);
       });
 
-      toast.success("Upload concluído!");
+      toast.success("Upload concluído com sucesso!");
       router.push(`/clients/${clientId}/media?folder=${folder}${subfolder ? `&sub=${subfolder}` : ""}`);
     } catch (err) {
       console.error(err);
+      setError("Erro ao enviar arquivo.");
       toast.error("Erro ao enviar arquivo.");
     } finally {
       setIsUploading(false);
@@ -80,43 +80,49 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
   }
 
   return (
-    <Card className="max-w-lg space-y-6 p-8 rounded-3xl shadow-lg bg-white/95 backdrop-blur">
+    <Card className="max-w-lg w-full space-y-6 p-8 rounded-3xl shadow-xl border border-slate-200 bg-white">
       <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-        <UploadCloud className="h-5 w-5 text-indigo-600" /> Enviar arquivo
+        <UploadCloud className="h-5 w-5 text-indigo-600" />
+        Enviar novo arquivo
       </h2>
 
-      <form onSubmit={handleUpload} className="space-y-5">
-        <div>
-          <Label>Título</Label>
+      <form onSubmit={handleUpload} className="space-y-6">
+        {/* Título */}
+        <div className="space-y-1">
+          <Label htmlFor="title">Título</Label>
           <Input
+            id="title"
+            placeholder="Ex: Fotos da campanha de inverno"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Ex: Campanha de verão"
           />
         </div>
 
-        <div>
-          <Label>Arquivo</Label>
+        {/* Seleção de arquivo */}
+        <div className="space-y-1">
+          <Label htmlFor="file">Arquivo</Label>
           <Input
+            id="file"
             type="file"
             accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </div>
 
+        {/* Preview */}
         {previewUrl && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-sm font-medium text-slate-800 mb-2">Pré-visualização</p>
+            <p className="text-sm font-medium text-slate-700 mb-2">Pré-visualização</p>
             {file?.type.startsWith("image/") ? (
               <Image
                 src={previewUrl}
                 alt="Preview"
-                width={250}
-                height={180}
+                width={300}
+                height={200}
                 className="rounded-md object-cover"
               />
             ) : file?.type.startsWith("video/") ? (
-              <video src={previewUrl} controls className="rounded-md h-48" />
+              <video src={previewUrl} controls className="rounded-md w-full h-48 object-cover" />
             ) : (
               <div className="flex items-center gap-2 text-slate-600">
                 <FileText className="h-6 w-6" /> <span className="truncate">{file?.name}</span>
@@ -125,6 +131,7 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
           </div>
         )}
 
+        {/* Barra de progresso */}
         {isUploading && (
           <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
             <div
@@ -134,21 +141,23 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
           </div>
         )}
 
+        {/* Erro */}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
+        {/* Botão enviar */}
         <Button
           type="submit"
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
           disabled={isUploading}
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium"
         >
           {isUploading ? `Enviando... ${progress}%` : "Enviar arquivo"}
         </Button>
       </form>
 
-      <p className="text-xs text-slate-500 text-center">
+      <p className="text-xs text-slate-500 text-center mt-2">
         O arquivo será salvo em:{" "}
         <span className="text-indigo-600 font-medium">
-          {folder} {subfolder ? ` / ${subfolder}` : ""}
+          {folder} {subfolder ? `/ ${subfolder}` : ""}
         </span>
       </p>
     </Card>

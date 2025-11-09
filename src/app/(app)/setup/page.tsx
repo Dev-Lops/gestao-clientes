@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { createBrowserClient } from "@supabase/ssr";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export default function SetupPage() {
   const [orgName, setOrgName] = useState("");
@@ -13,11 +14,17 @@ export default function SetupPage() {
   const [step, setStep] = useState<"checking" | "form" | "done">("checking");
   const router = useRouter();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // ✅ Cria cliente estável
+  const supabase = useMemo(
+    () =>
+      createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      ),
+    []
   );
 
+  // ✅ Verifica status do usuário
   useEffect(() => {
     const check = async () => {
       const { data } = await supabase.auth.getUser();
@@ -34,8 +41,9 @@ export default function SetupPage() {
       }
     };
     check();
-  }, [router, supabase.auth]);
+  }, [router, supabase]);
 
+  // ✅ Submissão do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -44,12 +52,11 @@ export default function SetupPage() {
     const user = data.user;
 
     if (!user) {
-      alert("Usuário não autenticado.");
+      toast.error("Usuário não autenticado.");
       router.push("/login");
       return;
     }
 
-    // 🔹 Cria organização
     const { data: org, error: orgError } = await supabase
       .from("app_orgs")
       .insert({
@@ -61,12 +68,11 @@ export default function SetupPage() {
 
     if (orgError) {
       console.error("Erro ao criar org:", orgError);
-      alert("Erro ao criar organização.");
+      toast.error("Erro ao criar organização.");
       setLoading(false);
       return;
     }
 
-    // 🔹 Cria membro vinculado à organização
     const { error: memberError } = await supabase.from("app_members").insert({
       user_id: user.id,
       org_id: org.id,
@@ -77,21 +83,20 @@ export default function SetupPage() {
 
     if (memberError) {
       console.error("Erro ao criar membro:", memberError);
-      alert("Erro ao criar membro.");
+      toast.error("Erro ao criar membro.");
       setLoading(false);
       return;
     }
 
-    // 🔹 Atualiza metadados do usuário
     await supabase.auth.updateUser({
       data: { org_id: org.id, role: "owner" },
     });
 
-    // 🔹 Força refresh do cookie local para refletir novo org_id
     await supabase.auth.refreshSession();
 
+    toast.success("Organização criada com sucesso!");
     setStep("done");
-    setTimeout(() => router.push("/dashboard"), 1200);
+    setTimeout(() => router.replace("/dashboard"), 1500);
   };
 
   if (step === "checking") {
@@ -127,9 +132,10 @@ export default function SetupPage() {
           placeholder="Nome da organização"
           required
           className="bg-white text-slate-900"
+          autoFocus
         />
 
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} aria-busy={loading}>
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Criando...

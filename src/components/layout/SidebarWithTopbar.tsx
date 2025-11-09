@@ -1,7 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { roleSatisfies, type Role } from "@/lib/auth/rbac";
+import { can, type AppRole } from "@/lib/auth/rbac";
+
 import { cn } from "@/lib/utils";
 import {
   Calendar,
@@ -19,13 +20,13 @@ type NavLink = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  minRole: Exclude<Role, "guest">;
+  minRole: Exclude<AppRole, "guest">;
 };
 
 type Props = {
   children: ReactNode;
   userName?: string;
-  role?: Role;
+  role?: AppRole;
 };
 
 // Links e rótulos
@@ -36,7 +37,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/admin/members", label: "Administração", icon: ShieldCheck, minRole: "owner" },
 ];
 
-const ROLE_LABEL: Record<Role, string> = {
+const ROLE_LABEL: Record<AppRole, string> = {
   guest: "Convidado",
   client: "Cliente",
   staff: "Equipe",
@@ -53,16 +54,16 @@ export function SidebarWithTopbar({ children, userName = "Usuário", role = "gue
   // Logout seguro
   async function handleLogout() {
     try {
-      const res = await fetch("/auth/logout", { method: "POST" });
+      const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error("Falha ao encerrar sessão");
     } finally {
-      router.replace("/login");
+      router.replace("/auth/login");
     }
   }
 
   // Links filtrados pelo papel
   const availableLinks = useMemo(
-    () => NAV_LINKS.filter((link) => roleSatisfies(role, link.minRole)),
+    () => NAV_LINKS.filter((link) => can(role, link.minRole)),
     [role]
   );
 

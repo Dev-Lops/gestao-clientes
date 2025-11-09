@@ -1,28 +1,28 @@
-"use client";
+"use client"
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 
-import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
-import { createClient } from "@/lib/supabase/browser";
-import { useAppStore } from "@/store/appStore";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client"
+import { useAppStore } from "@/store/appStore"
 import type {
   AppClient,
   AppTask,
   ContentCalendarItem,
   OrgClientStats,
-} from "@/types/tables";
-import { format, parseISO } from "date-fns";
+} from "@/types/tables"
+import { format, parseISO } from "date-fns"
 
-const EMPTY_CLIENTS: AppClient[] = [];
-const EMPTY_TASKS: AppTask[] = [];
-const EMPTY_CALENDAR_ITEMS: ContentCalendarItem[] = [];
-const EMPTY_STATS: OrgClientStats[] = [];
+const EMPTY_CLIENTS: AppClient[] = []
+const EMPTY_TASKS: AppTask[] = []
+const EMPTY_CALENDAR_ITEMS: ContentCalendarItem[] = []
+const EMPTY_STATS: OrgClientStats[] = []
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Novo",
@@ -30,63 +30,63 @@ const STATUS_LABELS: Record<string, string> = {
   active: "Ativo",
   paused: "Pausado",
   closed: "Encerrado",
-};
+}
+
+type KPI = { label: string; value: string | number; helper: string }
 
 export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <RealtimeDashboard />
     </Suspense>
-  );
+  )
 }
 
 function RealtimeDashboard() {
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
-  const setTable = useAppStore((state) => state.setTable);
-  const orgId = useAppStore((state) => state.orgId);
+  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
+  const router = useRouter()
+  const setTable = useAppStore((state) => state.setTable)
+  const orgId = useAppStore((state) => state.orgId)
 
-  // 👇 Corrigido: cast duplo “as unknown as Tipo[]” para evitar TS2352
   const clients =
-    (useAppStore((s) => s.tables.app_clients) as unknown as AppClient[]) ??
-    EMPTY_CLIENTS;
+    (useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? EMPTY_CLIENTS
   const tasks =
-    (useAppStore((s) => s.tables.app_tasks) as unknown as AppTask[]) ?? EMPTY_TASKS;
+    (useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? EMPTY_TASKS
   const agendaItems =
-    (useAppStore((s) => s.tables.app_content_calendar) as unknown as ContentCalendarItem[]) ??
-    EMPTY_CALENDAR_ITEMS;
+    (useAppStore((s) => s.tables.app_content_calendar) as ContentCalendarItem[]) ??
+    EMPTY_CALENDAR_ITEMS
   const stats =
-    ((useAppStore((s) => s.tables.org_client_stats) as unknown as OrgClientStats[]) ??
-      EMPTY_STATS)[0] ?? null;
+    ((useAppStore((s) => s.tables.org_client_stats) as OrgClientStats[]) ??
+      EMPTY_STATS)[0] ?? null
 
-  const [loading, setLoading] = useState(() => clients.length === 0);
-  const [error, setError] = useState<string | null>(null);
-  const bootstrappedRef = useRef(false);
+  const [loading, setLoading] = useState(() => clients.length === 0)
+  const [error, setError] = useState<string | null>(null)
+  const bootstrappedRef = useRef(false)
 
   useEffect(() => {
-    if (!orgId || bootstrappedRef.current) return;
+    if (!orgId || bootstrappedRef.current) return
 
     if (clients.length > 0) {
-      bootstrappedRef.current = true;
-      setLoading(false);
-      return;
+      bootstrappedRef.current = true
+      setLoading(false)
+      return
     }
 
-    let ignore = false;
+    let ignore = false
 
     async function fetchData() {
       try {
-        setLoading(true);
+        setLoading(true)
 
         const [statsRes, clientsRes, tasksRes, agendaRes] = await Promise.all([
-          // 📊 Estatísticas da organização
           supabase
             .from("org_client_stats_view")
-            .select("id, org_id, total, ativos, onboarding, pausados, media_progresso")
+            .select(
+              "id, org_id, total, ativos, onboarding, pausados, media_progresso"
+            )
             .eq("org_id", orgId)
             .limit(1),
 
-          // 👥 Últimos clientes
           supabase
             .from("app_clients")
             .select("id, org_id, name, status, plan, main_channel, created_at")
@@ -94,94 +94,93 @@ function RealtimeDashboard() {
             .order("created_at", { ascending: false })
             .limit(6),
 
-          // ✅ Tarefas mais recentes
           supabase
             .from("app_tasks")
-            .select("id, org_id, client_id, title, status, due_date, urgency, created_at")
+            .select(
+              "id, org_id, client_id, title, status, due_date, urgency, created_at"
+            )
             .eq("org_id", orgId)
             .limit(20),
 
-          // 📅 Agenda — agora sem alias e com conversão manual
           supabase
             .from("app_content_calendar")
-            .select("id, org_id, created_by, event_date, title, notes, channel, created_at")
+            .select(
+              "id, org_id, created_by, event_date, title, notes, channel, created_at"
+            )
             .eq("org_id", orgId)
             .order("event_date", { ascending: true })
             .limit(14),
-        ]);
+        ])
 
-        // 🚨 Tratamento de erros aprimorado
         if (statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error) {
           throw (
             statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error
-          );
+          )
         }
+        const normalizedAgenda = ((agendaRes.data ?? []) as ContentCalendarItem[]).map(
+          (item) => ({
+            ...item,
+            date: item.event_date
+              ? format(parseISO(item.event_date), "yyyy-MM-dd")
+              : "",
+          })
+        )
 
-        // 🧩 Conversão manual para compatibilidade com ContentCalendarItem
-        const normalizedAgenda: ContentCalendarItem[] = (agendaRes.data ?? []).map((item) => ({
-          ...item,
-          date: format(parseISO(item.event_date), "yyyy-MM-dd"),
-        }));
 
+        setTable("org_client_stats", statsRes.data ?? [])
+        setTable("app_clients", clientsRes.data ?? [])
+        setTable("app_tasks", tasksRes.data ?? [])
+        setTable("app_content_calendar", normalizedAgenda)
 
-
-
-        // ✅ Atualiza o Zustand store
-        setTable("org_client_stats", statsRes.data ?? []);
-        setTable("app_clients", clientsRes.data ?? []);
-        setTable("app_tasks", tasksRes.data ?? []);
-        setTable("app_content_calendar", normalizedAgenda);
-
-        bootstrappedRef.current = true;
-        setLoading(false);
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          console.error("🚨 Dashboard error:", err.message, err.stack);
-        } else {
-          console.error("🚨 Dashboard error (raw):", JSON.stringify(err, null, 2));
-        }
-
+        bootstrappedRef.current = true
+        setLoading(false)
+      } catch (err) {
+        console.error("🚨 Dashboard error:", err)
         if (!ignore) {
-          setError("Falha ao carregar dados.");
-          setLoading(false);
+          setError("Falha ao carregar dados.")
+          setLoading(false)
         }
       }
     }
 
-
-
-    fetchData();
-
+    fetchData()
     return () => {
-      ignore = true;
-    };
-  }, [clients.length, orgId, setTable, supabase]);
+      ignore = true
+    }
+  }, [clients.length, orgId, setTable, supabase])
 
   useEffect(() => {
     if (error) {
-      const timeout = setTimeout(() => router.refresh(), 4000);
-      return () => clearTimeout(timeout);
+      const timeout = setTimeout(() => router.refresh(), 4000)
+      return () => clearTimeout(timeout)
     }
-  }, [error, router]);
+  }, [error, router])
 
-  if (!orgId) return <DashboardSkeleton />;
-  if (loading) return <DashboardSkeleton />;
+  if (!orgId) return <DashboardSkeleton />
+  if (loading) return <DashboardSkeleton />
   if (error)
-    return <div className="p-10 text-center text-red-600 font-medium">{error}</div>;
+    return <div className="p-10 text-center text-red-600 font-medium">{error}</div>
 
-  const { ativos, onboarding, pausados, media_progresso } = stats ?? {};
+  const { ativos, onboarding, pausados, media_progresso } = stats ?? {}
 
-  const atrasadas = tasks.filter((t) => ["blocked", "todo"].includes(t.status)).length;
+  const atrasadas = tasks.filter((t) =>
+    ["blocked", "todo"].includes(t.status ?? "")
+  ).length
+
   const urgentes = tasks.filter(
-    (t) => ["high", "critical"].includes(t.urgency) && t.status !== "done",
-  ).length;
+    (t) => ["high", "critical"].includes(t.urgency ?? "") && t.status !== "done"
+  ).length
 
-  const kpis = [
+  const kpis: KPI[] = [
     { label: "Clientes ativos", value: ativos ?? 0, helper: "em acompanhamento" },
     { label: "Em onboarding", value: onboarding ?? 0, helper: "em integração" },
     { label: "Pausados", value: pausados ?? 0, helper: "aguardando retorno" },
-    { label: "Média de progresso", value: `${media_progresso ?? 0}%`, helper: "dos planos ativos" },
-  ];
+    {
+      label: "Média de progresso",
+      value: `${media_progresso ?? 0}%`,
+      helper: "dos planos ativos",
+    },
+  ]
 
   return (
     <motion.div
@@ -194,9 +193,12 @@ function RealtimeDashboard() {
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">
             Visão geral
           </p>
-          <h1 className="text-3xl font-semibold text-slate-900">Painel de Controle</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            Painel de Controle
+          </h1>
           <p className="max-w-xl text-sm text-slate-500">
-            Tudo em tempo real — clientes, tarefas e agenda se atualizam automaticamente.
+            Tudo em tempo real — clientes, tarefas e agenda se atualizam
+            automaticamente.
           </p>
         </div>
         <Button size="lg" asChild>
@@ -217,7 +219,9 @@ function RealtimeDashboard() {
                 <span className="text-xs uppercase text-slate-400 tracking-widest">
                   {item.helper}
                 </span>
-                <span className="text-3xl font-semibold text-slate-900">{item.value}</span>
+                <span className="text-3xl font-semibold text-slate-900">
+                  {item.value}
+                </span>
                 <span className="text-sm text-slate-500">{item.label}</span>
               </div>
             </Card>
@@ -232,13 +236,19 @@ function RealtimeDashboard() {
 
       {/* Últimos clientes */}
       <section>
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">Últimos clientes</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-3">
+          Últimos clientes
+        </h2>
         {clients.length === 0 ? (
           <p className="text-sm text-slate-500">Nenhum cliente cadastrado ainda.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clients.map((client) => {
-              const label = STATUS_LABELS[client.status] ?? client.status;
+              const label =
+                STATUS_LABELS[client.status ?? ""] ??
+                client.status ??
+                "Desconhecido"
+
               const badgeClass =
                 label === "Ativo"
                   ? "text-green-600"
@@ -248,10 +258,14 @@ function RealtimeDashboard() {
                       ? "text-orange-500"
                       : label === "Encerrado"
                         ? "text-red-500"
-                        : "text-slate-500";
+                        : "text-slate-500"
 
               return (
-                <motion.div key={client.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+                <motion.div
+                  key={client.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
                   <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
                     <div className="flex flex-col gap-1">
                       <h3 className="font-medium text-slate-900">{client.name}</h3>
@@ -260,12 +274,21 @@ function RealtimeDashboard() {
                       </p>
                       <p className="text-xs text-slate-400">
                         Criado em:{" "}
-                        {new Date(client.created_at).toLocaleDateString("pt-BR")}
+                        {client.created_at
+                          ? new Date(client.created_at).toLocaleDateString(
+                            "pt-BR",
+                            {
+                              weekday: "short",
+                              day: "2-digit",
+                              month: "short",
+                            }
+                          )
+                          : "Data não definida"}
                       </p>
                     </div>
                   </Card>
                 </motion.div>
-              );
+              )
             })}
           </div>
         )}
@@ -281,18 +304,28 @@ function RealtimeDashboard() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {agendaItems.map((event) => (
-              <motion.div key={event.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
                 <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-                  <h3 className="font-medium text-slate-900">{event.title ?? "Sem título"}</h3>
+                  <h3 className="font-medium text-slate-900">
+                    {event.title ?? "Sem título"}
+                  </h3>
                   <p className="text-xs text-slate-500 mt-1">
-                    {new Date(event.date).toLocaleDateString("pt-BR", {
-                      weekday: "short",
-                      day: "2-digit",
-                      month: "short",
-                    })}
+                    {event.date
+                      ? new Date(event.date).toLocaleDateString("pt-BR", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                      })
+                      : "Data não definida"}
                   </p>
                   {event.notes && (
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{event.notes}</p>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">
+                      {event.notes}
+                    </p>
                   )}
                 </Card>
               </motion.div>
@@ -301,5 +334,5 @@ function RealtimeDashboard() {
         )}
       </section>
     </motion.div>
-  );
+  )
 }

@@ -1,13 +1,14 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserSupabaseClient as createClient } from "@/lib/supabase/client";
+
 
 export default function LogoutButton() {
   const supabase = createClient();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = "/auth/login";
   };
 
   return (

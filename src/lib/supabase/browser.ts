@@ -1,25 +1,38 @@
-import { createBrowserClient } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
+'use client'
 
-let client: SupabaseClient | null = null
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-/**
- * Retorna uma instância única do Supabase Client para o browser.
- * Evita recriação e garante persistência da sessão via cookies.
- */
-export function createClient(): SupabaseClient {
-  if (!client) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-    if (!url || !anonKey) {
-      throw new Error(
-        '❌ Supabase URL ou Anon Key ausentes nas variáveis de ambiente.'
-      )
-    }
+// 🔹 Mantém apenas UMA instância global no navegador
+declare global {
+   
+  var __supabaseBrowser__: SupabaseClient | undefined
+}
 
-    client = createBrowserClient(url, anonKey)
+export function getSupabaseBrowser(): SupabaseClient {
+  if (typeof window === 'undefined') {
+    throw new Error('❌ Tentou usar Supabase browser client no servidor.')
   }
 
-  return client
+  if (!globalThis.__supabaseBrowser__) {
+    globalThis.__supabaseBrowser__ = createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: localStorage,
+        },
+      }
+    )
+  }
+
+  return globalThis.__supabaseBrowser__
 }
+
+// ✅ exporta a instância única
+export const supabaseBrowser = getSupabaseBrowser()
