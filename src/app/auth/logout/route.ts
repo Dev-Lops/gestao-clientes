@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
     const response = NextResponse.json(
       { message: 'Sessão encerrada com sucesso.' },
       { status: 200 }

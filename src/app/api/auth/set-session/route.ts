@@ -20,6 +20,12 @@ export async function POST(req: Request) {
     }
 
     return response
+    if (error) {
+      console.error('Erro ao sincronizar sessão:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return response
   } catch (err) {
     console.error('Erro ao sincronizar sessão:', err)
     return NextResponse.json(

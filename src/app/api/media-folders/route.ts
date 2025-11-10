@@ -25,14 +25,21 @@ export async function GET() {
     if (error) {
       console.error("Erro ao buscar mídias:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Erro ao buscar mídias:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data ?? []);
   } catch (error) {
     console.error("Erro inesperado:", error);
+    return NextResponse.json(data ?? []);
+  } catch (error) {
+    console.error("Erro inesperado:", error);
     return NextResponse.json(
       { error: "Erro interno no servidor." },
+      { error: "Erro interno no servidor." },
       { status: 500 }
+    );
     );
   }
 }

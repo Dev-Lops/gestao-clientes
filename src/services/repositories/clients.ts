@@ -69,6 +69,7 @@ export async function createClientRecord(input: CreateClientInput) {
   return data as AppClient;
 }
 
+<<<<<<< HEAD
 export async function deleteClientById(params: { orgId: string; clientId: string }) {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -78,10 +79,16 @@ export async function deleteClientById(params: { orgId: string; clientId: string
     .eq("org_id", params.orgId)
     .select("id")
     .maybeSingle();
+=======
+export async function deleteClientById(clientId: string) {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("app_clients").delete().eq("id", clientId);
+>>>>>>> main
 
   if (error) {
     throw new Error(`Erro ao excluir cliente: ${error.message}`);
   }
+<<<<<<< HEAD
 
   if (!data) {
     throw new Error("Cliente não encontrado na organização informada.");
@@ -89,12 +96,21 @@ export async function deleteClientById(params: { orgId: string; clientId: string
 }
 
 export async function removeClientAccess(params: { orgId: string; clientId: string }) {
+=======
+}
+
+export async function removeClientAccess(clientId: string) {
+>>>>>>> main
   const supabase = await createSupabaseServerClient();
   const { data: client, error } = await supabase
     .from("app_clients")
     .select("id, member_id")
+<<<<<<< HEAD
     .eq("id", params.clientId)
     .eq("org_id", params.orgId)
+=======
+    .eq("id", clientId)
+>>>>>>> main
     .maybeSingle();
 
   if (error) {
@@ -109,8 +125,12 @@ export async function removeClientAccess(params: { orgId: string; clientId: stri
     const { error: memberError } = await supabase
       .from("app_members")
       .delete()
+<<<<<<< HEAD
       .eq("id", client.member_id)
       .eq("org_id", params.orgId);
+=======
+      .eq("id", client.member_id);
+>>>>>>> main
 
     if (memberError) {
       throw new Error(`Erro ao remover membro: ${memberError.message}`);
@@ -120,8 +140,12 @@ export async function removeClientAccess(params: { orgId: string; clientId: stri
   const { error: updateError } = await supabase
     .from("app_clients")
     .update({ invited_email: null, member_id: null })
+<<<<<<< HEAD
     .eq("id", params.clientId)
     .eq("org_id", params.orgId);
+=======
+    .eq("id", clientId);
+>>>>>>> main
 
   if (updateError) {
     throw new Error(`Erro ao limpar convite: ${updateError.message}`);
@@ -129,29 +153,43 @@ export async function removeClientAccess(params: { orgId: string; clientId: stri
 }
 
 export async function updateClientById(
+<<<<<<< HEAD
   orgId: string,
+=======
+>>>>>>> main
   clientId: string,
   payload: Partial<Pick<AppClient, "name" | "status" | "plan" | "main_channel" | "account_manager">>
 ) {
   const supabase = await createSupabaseServerClient();
+<<<<<<< HEAD
   const { error } = await supabase
     .from("app_clients")
     .update(payload)
     .eq("id", clientId)
     .eq("org_id", orgId);
+=======
+  const { error } = await supabase.from("app_clients").update(payload).eq("id", clientId);
+>>>>>>> main
 
   if (error) {
     throw new Error(`Erro ao atualizar cliente: ${error.message}`);
   }
 }
 
+<<<<<<< HEAD
 export async function getClientById(orgId: string, clientId: string) {
+=======
+export async function getClientById(clientId: string) {
+>>>>>>> main
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("app_clients")
     .select("*")
     .eq("id", clientId)
+<<<<<<< HEAD
     .eq("org_id", orgId)
+=======
+>>>>>>> main
     .maybeSingle();
 
   if (error) {
