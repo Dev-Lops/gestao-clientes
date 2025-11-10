@@ -21,7 +21,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResponse } from "@/types/actions";
 import type { AppClient } from "@/types/tables"; // ✅ garante tipagem padronizada
-import { CLIENT_STATUS_LABELS } from "@/utils/statusMap";
+import { CLIENT_STATUS_LABELS } from "@/lib/utils/status";
 import { CreditCard, FileText, ListFilter, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";

@@ -1,6 +1,6 @@
 "use client";
 
-import { DeleteMediaButton } from "@/components/DeleteMediaButton";
+import { DeleteMediaButton } from "@/features/media/components/DeleteMediaButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,8 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createBrowserSupabaseClient as createClient } from "@/lib/supabase/client";
-
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   Clock,
   Download,
@@ -24,10 +23,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-/* ------------------ Tipos ------------------ */
 type MediaItem = {
   id: string;
   title: string | null;
@@ -42,18 +40,17 @@ type MediaFolder = {
   name: string;
   parent_folder: string | null;
   created_at: string;
+  client_id: string;
 };
 
-/* ------------------ Página principal ------------------ */
 export default function ClientMediaPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const clientId = params.id;
-  const folderParam = searchParams.get("folder");
-  const subfolderParam = searchParams.get("sub");
-  const folder: MediaFolder | "" = isMediaFolder(folderParam) ? folderParam : "";
+  const folder = searchParams.get("folder") ?? "";
+  const subfolder = searchParams.get("sub") ?? "";
 
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
@@ -61,45 +58,94 @@ export default function ClientMediaPage() {
   const [openModal, setOpenModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
 
-  /* ------------------ Buscar mídias ------------------ */
   useEffect(() => {
-    async function loadMedia() {
+    let cancelled = false;
+
+    async function load() {
       try {
         setLoading(true);
 
-        const [{ data: media }, { data: subs }] = await Promise.all([
-          supabase
+        const mediaQuery = (() => {
+          let query = supabase
             .from("app_media_items")
             .select("*")
             .eq("client_id", clientId)
-            .eq("folder", folder)
-            .eq("subfolder", subfolder || null)
-            .order("created_at", { ascending: false }),
-          supabase
+            .order("created_at", { ascending: false });
+
+          if (folder) {
+            query = query.eq("folder", folder);
+          } else {
+            query = query.is("folder", null);
+          }
+
+          if (subfolder) {
+            query = query.eq("subfolder", subfolder);
+          } else {
+            query = query.is("subfolder", null);
+          }
+
+          return query;
+        })();
+
+        const folderQuery = (() => {
+          let query = supabase
             .from("app_media_folders")
             .select("*")
             .eq("client_id", clientId)
-            .eq("parent_folder", subfolder || folder)
-            .order("created_at", { ascending: true }),
-        ]);
+            .order("created_at", { ascending: true });
 
-        setItems(media ?? []);
-        setFolders(subs ?? []);
-      } catch (err) {
-        console.error("Erro ao carregar mídias:", err);
-        toast.error("Erro ao carregar mídias.");
+          if (subfolder) {
+            query = query.eq("parent_folder", subfolder);
+          } else if (folder) {
+            query = query.eq("parent_folder", folder);
+          } else {
+            query = query.is("parent_folder", null);
+          }
+
+          return query;
+        })();
+
+        const [mediaResult, folderResult] = await Promise.all([mediaQuery, folderQuery]);
+
+        if (mediaResult.error) {
+          throw mediaResult.error;
+        }
+
+        if (folderResult.error) {
+          throw folderResult.error;
+        }
+
+        if (!cancelled) {
+          setItems(mediaResult.data ?? []);
+          setFolders(folderResult.data ?? []);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar mídias:", error);
+        if (!cancelled) {
+          toast.error("Erro ao carregar mídias.");
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
-    loadMedia();
-  }, [folder, subfolder, clientId, supabase]);
+    if (clientId) {
+      void load();
+    }
 
-  /* ------------------ Criar pasta ------------------ */
-  async function handleCreateFolder(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newFolderName.trim()) return toast.error("Informe o nome da pasta.");
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, folder, subfolder, supabase]);
+
+  async function handleCreateFolder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!newFolderName.trim()) {
+      toast.error("Informe o nome da pasta.");
+      return;
+    }
 
     try {
       const {
@@ -112,66 +158,62 @@ export default function ClientMediaPage() {
         return;
       }
 
-      // Busca a org vinculada ao owner (precisa vir antes do insert!)
-      const { data: org, error: orgError } = await supabase
-        .from("app_orgs")
-        .select("id")
-        .eq("owner_user_id", user.id)
-        .maybeSingle();
-
-      if (orgError) {
-        console.error("Erro ao buscar organização:", orgError);
+      const orgId = (user.user_metadata as { org_id?: string } | null)?.org_id;
+      if (!orgId) {
         toast.error("Erro ao identificar organização.");
         return;
       }
 
-      const orgId = org?.id ?? null;
-
-      // Agora sim faz o insert corretamente
-      const { error } = await supabase.from("app_media_folders").insert({
-        client_id: clientId,
-        org_id: orgId,
-        parent_folder: folder || null,
-        name: newFolderName.trim(),
-        created_by: user.id, // ⚡ necessário para RLS
-      });
+      const parentFolder = subfolder || folder || null;
+      const { data, error } = await supabase
+        .from("app_media_folders")
+        .insert({
+          client_id: clientId,
+          org_id: orgId,
+          parent_folder: parentFolder,
+          name: newFolderName.trim(),
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
 
       if (error) {
-        console.error("Erro Supabase:", error);
-        toast.error(error.message || "Erro ao criar pasta.");
-        return;
+        throw error;
       }
 
       toast.success("Pasta criada com sucesso!");
       setNewFolderName("");
       setOpenModal(false);
-    } catch (err) {
-      console.error("Erro ao criar pasta:", err);
-      toast.error("Erro inesperado ao criar pasta.");
+      setFolders((previous) => (data ? [...previous, data] : previous));
+    } catch (error) {
+      console.error("Erro ao criar pasta:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao criar pasta.");
     }
   }
 
-  /* ------------------ Loading global ------------------ */
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[70vh] text-slate-500">
-        <Clock className="h-6 w-6 mb-3 animate-spin" />
+      <div className="flex h-[70vh] flex-col items-center justify-center text-slate-500">
+        <Clock className="mb-3 h-6 w-6 animate-spin" />
         Carregando mídias...
       </div>
     );
+  }
 
-  /* ------------------ Layout ------------------ */
+  const newMediaParams = new URLSearchParams({ folder });
+  if (subfolder) {
+    newMediaParams.set("sub", subfolder);
+  }
+
   return (
-    <div className="max-w-6xl mx-auto p-10 space-y-10 bg-white rounded-3xl shadow-xl border border-slate-200">
+    <div className="mx-auto max-w-6xl space-y-10 rounded-3xl border border-slate-200 bg-white p-10 shadow-xl">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-3xl font-bold text-slate-900">
             <FolderOpen className="h-7 w-7 text-indigo-600" />
             Biblioteca de Mídias
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Gerencie imagens, vídeos e arquivos de cada cliente.
-          </p>
+          <p className="mt-1 text-sm text-slate-500">Gerencie imagens, vídeos e arquivos de cada cliente.</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -182,46 +224,42 @@ export default function ClientMediaPage() {
           >
             <FolderPlus className="h-4 w-4" /> Nova Pasta
           </Button>
-          <Button
-            asChild
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
-          >
-            <Link
-              href={`/clients/${clientId}/media/new?folder=${folder}${subfolder ? `&sub=${subfolder}` : ""
-                }`}
-            >
+          <Button asChild className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700">
+            <Link href={`/clients/${clientId}/media/new?${newMediaParams.toString()}`}>
               <Plus className="h-4 w-4" /> Nova Mídia
             </Link>
           </Button>
         </div>
       </header>
 
-      {/* Subpastas */}
       {folders.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {folders.map((f) => (
-            <Link
-              key={f.id}
-              href={`/clients/${clientId}/media?folder=${folder}&sub=${encodeURIComponent(
-                f.name
-              )}`}
-            >
-              <Button
-                variant="outline"
-                className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-sm"
-              >
-                📁 {f.name}
-              </Button>
-            </Link>
-          ))}
+          {folders.map((folderRow) => {
+            const params = new URLSearchParams();
+
+            if (!folder) {
+              params.set("folder", folderRow.name);
+            } else {
+              params.set("folder", folder);
+              params.set("sub", folderRow.name);
+            }
+
+            return (
+              <Link key={folderRow.id} href={`/clients/${clientId}/media?${params.toString()}`}>
+                <Button
+                  variant="outline"
+                  className="rounded-xl border-slate-200 bg-white text-sm hover:bg-slate-50"
+                >
+                  📁 {folderRow.name}
+                </Button>
+              </Link>
+            );
+          })}
         </div>
       )}
 
-      {/* Itens */}
       {items.length === 0 ? (
-        <Card className="p-10 text-center text-slate-500">
-          Nenhum arquivo encontrado nesta pasta.
-        </Card>
+        <Card className="p-10 text-center text-slate-500">Nenhum arquivo encontrado nesta pasta.</Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
@@ -230,24 +268,20 @@ export default function ClientMediaPage() {
         </div>
       )}
 
-      {/* Modal criar pasta */}
       <Dialog open={openModal} onOpenChange={setOpenModal}>
-        <DialogContent className="rounded-2xl p-6 bg-white border-slate-200">
+        <DialogContent className="rounded-2xl border-slate-200 bg-white p-6">
           <DialogHeader>
             <DialogTitle>Criar nova pasta</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateFolder} className="space-y-4 mt-3">
+          <form onSubmit={handleCreateFolder} className="mt-3 space-y-4">
             <Input
               placeholder="Nome da nova pasta"
               value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
+              onChange={(event) => setNewFolderName(event.target.value)}
               required
             />
             <DialogFooter>
-              <Button
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
+              <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
                 Criar
               </Button>
             </DialogFooter>
@@ -258,75 +292,93 @@ export default function ClientMediaPage() {
   );
 }
 
-/* ------------------ Card de Mídia ------------------ */
 function MediaCard({ item }: { item: MediaItem }) {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [publicUrl, setPublicUrl] = useState("");
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [url, setUrl] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(true);
 
   useEffect(() => {
-    async function getUrl() {
-      if (!item.file_path) return;
+    let cancelled = false;
+
+    async function loadUrl() {
+      if (!item.file_path) {
+        setUrl("");
+        setLoadingPreview(false);
+        return;
+      }
+
       try {
         const { data, error } = await supabase.storage
           .from("media")
           .createSignedUrl(item.file_path, 3600);
-        if (error) throw error;
-        setUrl(data?.signedUrl ?? "");
+
+        if (error) {
+          throw error;
+        }
+
+        if (!cancelled) {
+          setUrl(data?.signedUrl ?? "");
+        }
       } catch {
-        const { data } = supabase.storage
-          .from("media")
-          .getPublicUrl(item.file_path);
-        setUrl(data?.publicUrl ?? "");
+        const { data } = supabase.storage.from("media").getPublicUrl(item.file_path);
+        if (!cancelled) {
+          setUrl(data.publicUrl ?? "");
+        }
       } finally {
-        setLoadingPreview(false);
+        if (!cancelled) {
+          setLoadingPreview(false);
+        }
       }
     }
 
-    getUrl();
+    void loadUrl();
+
+    return () => {
+      cancelled = true;
+    };
   }, [item.file_path, supabase]);
 
   const isImage = item.file_path?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   const isVideo = item.file_path?.match(/\.(mp4|mov|webm)$/i);
 
   return (
-    <Card className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition">
+    <Card className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
       <div className="relative aspect-[4/5] bg-slate-100">
         {loadingPreview ? (
-          <div className="flex h-full items-center justify-center text-slate-400 animate-pulse">
-            <Clock className="h-6 w-6 mr-2 animate-spin" /> Carregando...
+          <div className="flex h-full items-center justify-center text-slate-400">
+            <Clock className="mr-2 h-6 w-6 animate-spin" /> Carregando...
           </div>
         ) : isImage ? (
           <Image
             src={url}
-            alt={item.title ?? ""}
+            alt={item.title ?? "Arquivo"}
             fill
             className="object-cover transition group-hover:scale-105"
           />
         ) : isVideo ? (
-          <video src={url} controls className="w-full h-full object-cover" />
+          <video src={url} controls className="h-full w-full object-cover" />
         ) : (
-          <div className="flex items-center justify-center h-full text-slate-500">
+          <div className="flex h-full items-center justify-center text-slate-500">
             <FileText className="h-8 w-8" />
           </div>
         )}
       </div>
 
-      <div className="p-3 flex justify-between items-center">
-        <span className="text-sm font-medium truncate">{item.title}</span>
+      <div className="flex items-center justify-between p-3">
+        <span className="truncate text-sm font-medium">{item.title}</span>
         <div className="flex gap-2">
           <Button
             asChild
             variant="outline"
             size="icon"
             className="hover:bg-slate-100"
+            disabled={!url}
           >
-            <a href={url} title="download" download>
+            <a href={url || undefined} title="download" download>
               <Download className="h-4 w-4" />
             </a>
           </Button>
-          <DeleteMediaButton itemId={item.id} filePath={item.file_path!} />
+          {item.file_path ? <DeleteMediaButton itemId={item.id} filePath={item.file_path} /> : null}
         </div>
       </div>
     </Card>

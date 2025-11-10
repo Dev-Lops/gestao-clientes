@@ -1,20 +1,25 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
+import {
+  createServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/config/env";
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
+
+type ServerClient = SupabaseClient;
+
 function getSupabaseCredentials() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("Supabase URL ou Anon Key não configurados nas variáveis de ambiente.");
-  }
-
-  return { url, anonKey };
+  return {
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+  } as const;
 }
 
-export async function createServerSupabaseClient() {
+export async function createSupabaseServerClient(): Promise<ServerClient> {
   const cookieStore = await cookies();
   const { url, anonKey } = getSupabaseCredentials();
 
@@ -23,26 +28,20 @@ export async function createServerSupabaseClient() {
       get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      set(name: string, value: string, options: CookieOptions) {
-        void name;
-        void value;
-        void options;
+      set() {
         // cookies() em renderizações server-side padrão é somente leitura.
-        // A atualização real deve ocorrer via Route Handler usando createRouteHandlerClient.
       },
-      remove(name: string, options: CookieOptions) {
-        void name;
-        void options;
-        // Não faz nada aqui pelo mesmo motivo do método set.
+      remove() {
+        // cookies() em renderizações server-side padrão é somente leitura.
       },
     },
   });
 }
 
-export function createRouteHandlerClient(
-  cookieStore: ReadonlyRequestCookies,
+export function createSupabaseRouteHandlerClient(
+  cookieStore: CookieStore,
   response: NextResponse
-) {
+): ServerClient {
   const { url, anonKey } = getSupabaseCredentials();
 
   return createServerClient(url, anonKey, {
@@ -59,3 +58,11 @@ export function createRouteHandlerClient(
     },
   });
 }
+
+export type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseServerClient>
+>;
+
+// Backwards compatibility exports for legacy imports
+export const createServerSupabaseClient = createSupabaseServerClient;
+export const createRouteHandlerClient = createSupabaseRouteHandlerClient;

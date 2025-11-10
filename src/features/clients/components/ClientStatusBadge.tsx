@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import type { ClientStatus } from "@/types/client";
-import { getStatusLabel } from "@/utils/statusMap";
+import { getStatusLabel } from "@/lib/utils/status";
 
 export function ClientStatusBadge({ status }: { status?: ClientStatus }) {
   const label = getStatusLabel(status);

@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -20,14 +20,14 @@ import {
 } from "lucide-react";
 
 
-import { ClientProgressCard } from "@/components/ClientProgressCard";
-import { ClientStatusBadge } from "@/components/ClientStatusBadge";
-import { DeleteClientButton } from "@/components/DeleteClientButton";
-import { EditClientDialog } from "@/components/EditClientDialog";
+import { ClientProgressCard } from "@/features/clients/components/ClientProgressCard";
+import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBadge";
+import { DeleteClientButton } from "@/features/clients/components/DeleteClientButton";
+import { EditClientDialog } from "@/features/clients/components/EditClientDialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { AppClient } from "@/types/tables";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function ClientInfoPageClient({
   id,
@@ -36,7 +36,7 @@ export default function ClientInfoPageClient({
   id: string;
   userRole: string;
 }) {
-  const supabase = supabaseBrowser;
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [client, setClient] = useState<AppClient | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);

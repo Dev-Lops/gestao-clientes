@@ -8,7 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { updateClientInfo } from "@/app/(app)/clients/[id]/info/actions";
-import { EditClientDialog } from "@/components/EditClientDialog";
+import { EditClientDialog } from "@/features/clients/components/EditClientDialog";
 import type { AppClient } from "@/types/tables";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());

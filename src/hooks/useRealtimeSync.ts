@@ -1,8 +1,8 @@
-import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
-import { useAppStore } from '@/store/appStore'
-import { SyncedTable, TableMap } from '@/types/tables'
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import { useEffect, useMemo, useRef } from 'react'
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { useAppStore } from "@/store/appStore";
+import type { SyncedTable, TableMap } from "@/types/tables";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { useEffect, useMemo, useRef } from "react";
 
 /**
  * Hook genérico para sincronização em tempo real com Supabase.
@@ -13,60 +13,60 @@ export function useRealtimeSync<K extends SyncedTable>(params: {
   orgId?: string | null
   initialData?: TableMap[K][]
 }) {
-  const { table, orgId, initialData } = params
+  const { table, orgId, initialData } = params;
 
-  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
-  const setTable = useAppStore((s) => s.setTable)
-  const upsertRow = useAppStore((s) => s.upsertRow)
-  const removeRow = useAppStore((s) => s.removeRow)
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const setTable = useAppStore((s) => s.setTable);
+  const upsertRow = useAppStore((s) => s.upsertRow);
+  const removeRow = useAppStore((s) => s.removeRow);
 
-  const hydratedRef = useRef(false)
+  const hydratedRef = useRef(false);
 
   // Reinicia hidratação ao trocar de tabela/org
   useEffect(() => {
-    hydratedRef.current = false
-  }, [table, orgId])
+    hydratedRef.current = false;
+  }, [table, orgId]);
 
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId) return;
 
     // 🔹 Carrega os dados iniciais apenas uma vez
     if (!hydratedRef.current && initialData?.length) {
-      setTable(table, initialData)
-      hydratedRef.current = true
+      setTable(table, initialData);
+      hydratedRef.current = true;
     }
 
     // 🔹 Assina os eventos em tempo real do Supabase
     const channel = supabase
       .channel(`realtime_${table}_${orgId}`)
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table },
+        "postgres_changes",
+        { event: "*", schema: "public", table },
         (payload: RealtimePostgresChangesPayload<TableMap[K]>) => {
-          const { eventType, new: newRow, old: oldRow } = payload
+          const { eventType, new: newRow, old: oldRow } = payload;
 
           // DELETE
-          if (eventType === 'DELETE') {
-            if (oldRow && 'org_id' in oldRow && oldRow.org_id !== orgId) return
-            if (oldRow && 'id' in oldRow && oldRow.id)
-              removeRow(table, oldRow.id)
-            return
+          if (eventType === "DELETE") {
+            if (oldRow && "org_id" in oldRow && oldRow.org_id !== orgId) return;
+            if (oldRow && "id" in oldRow && oldRow.id)
+              removeRow(table, oldRow.id);
+            return;
           }
 
           // INSERT / UPDATE
-          if (newRow && 'org_id' in newRow && newRow.org_id !== orgId) return
-          if (newRow && 'id' in newRow && newRow.id) upsertRow(table, newRow)
+          if (newRow && "org_id" in newRow && newRow.org_id !== orgId) return;
+          if (newRow && "id" in newRow && newRow.id) upsertRow(table, newRow);
         }
       )
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`[Realtime] Subscribed to ${table}`)
+        if (status === "SUBSCRIBED") {
+          console.log(`[Realtime] Subscribed to ${table}`);
         }
-      })
+      });
 
     return () => {
-      supabase.removeChannel(channel)
-      console.log(`[Realtime] Unsubscribed from ${table}`)
-    }
-  }, [table, orgId, supabase, setTable, upsertRow, removeRow, initialData])
+      supabase.removeChannel(channel);
+      console.log(`[Realtime] Unsubscribed from ${table}`);
+    };
+  }, [table, orgId, supabase, setTable, upsertRow, removeRow, initialData]);
 }

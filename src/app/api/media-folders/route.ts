@@ -1,34 +1,38 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/services/auth/session";
+import { NextResponse } from "next/server";
 
-/**
- * ✅ Lista arquivos de mídia do cliente autenticado.
- * - Usa o cliente Supabase no servidor (com cookies de sessão)
- * - Respeita políticas RLS automaticamente
- */
-
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const supabase = await createServerSupabaseClient()
+    const { user, orgId } = await getSessionProfile();
 
-
-  const { data, error } = await supabase
-    .from('app_media_items')
-    .select('id, folder, title')
-    .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Erro ao buscar mídias:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    return NextResponse.json(data ?? [])
-  } catch (err) {
-    console.error('Erro inesperado:', err)
+    if (!orgId) {
+      return NextResponse.json({ error: "Missing organization context" }, { status: 400 });
+    }
+
+    const supabase = await createSupabaseServerClient();
+
+    const { data, error } = await supabase
+      .from("app_media_items")
+      .select("id, folder, title, client_id, created_at")
+      .eq("org_id", orgId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao buscar mídias:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data ?? []);
+  } catch (error) {
+    console.error("Erro inesperado:", error);
     return NextResponse.json(
-      { error: 'Erro interno no servidor.' },
+      { error: "Erro interno no servidor." },
       { status: 500 }
-    )
+    );
   }
 }

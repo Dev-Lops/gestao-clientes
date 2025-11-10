@@ -1,36 +1,41 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createServerSupabaseClient()
-    const body = await req.json()
+    const supabase = await createSupabaseServerClient();
+    const body = await req.json();
 
-    // 🔐 Verifica usuário autenticado
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json(
-        { message: 'Sessão expirada. Faça login novamente.' },
+        { message: "Sessão expirada. Faça login novamente." },
         { status: 401 }
-      )
+      );
     }
 
-    // 🔹 Validação básica
     if (!body.id) {
       return NextResponse.json(
-        { message: 'ID do cliente não informado.' },
+        { message: "ID do cliente não informado." },
         { status: 400 }
-      )
+      );
     }
 
-    // 🔧 Atualiza registro
+    const orgId = user.user_metadata?.org_id;
+
+    if (!orgId) {
+      return NextResponse.json(
+        { message: "Organização não vinculada ao usuário." },
+        { status: 403 }
+      );
+    }
+
     const { error } = await supabase
-      .from('app_clients')
+      .from("app_clients")
       .update({
         name: body.name,
         status: body.status,
@@ -46,24 +51,25 @@ export async function POST(req: Request) {
         payment_date: body.payment_date,
         progress: body.progress,
       })
-      .eq('id', body.id)
-      .select('id')
-      .maybeSingle()
+      .eq("id", body.id)
+      .eq("org_id", orgId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
-      console.error('❌ Erro ao atualizar cliente:', error.message)
+      console.error("❌ Erro ao atualizar cliente:", error.message);
       return NextResponse.json(
-        { message: 'Erro ao atualizar cliente: ' + error.message },
+        { message: `Erro ao atualizar cliente: ${error.message}` },
         { status: 500 }
-      )
+      );
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('❌ Erro inesperado:', err)
+    console.error("❌ Erro inesperado:", err);
     return NextResponse.json(
-      { message: 'Erro interno no servidor.' },
+      { message: "Erro interno no servidor." },
       { status: 500 }
-    )
+    );
   }
 }

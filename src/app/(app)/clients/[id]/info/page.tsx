@@ -1,7 +1,7 @@
-import { getSessionProfile } from "@/lib/auth/session";
+import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 
-import { ClientInfoPageClient } from "./ClientInfoPageClient";
+import ClientInfoPageClient from "./ClientInfoPageClient";
 
 interface ClientInfoPageProps {
   params: { id: string };
@@ -19,5 +19,5 @@ export default async function ClientInfoPage({ params }: ClientInfoPageProps) {
     redirect("/setup");
   }
 
-  return <ClientInfoPageClient id={id} role={role} />;
+  return <ClientInfoPageClient id={id} userRole={role ?? "guest"} />;
 }

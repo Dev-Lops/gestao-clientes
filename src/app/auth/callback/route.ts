@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createRouteHandlerClient } from '@/lib/supabase/server'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -12,22 +12,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`)
   }
 
-  // Cria uma resposta que redireciona para /setup
   const response = NextResponse.redirect(`${origin}/setup`)
-
   const cookieStore = await cookies()
-  const supabase = createRouteHandlerClient(cookieStore, response)
+  const supabase = createSupabaseRouteHandlerClient(cookieStore, response)
 
-  // 🔹 Troca o código OAuth por uma sessão válida
-  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
-    code
-  )
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
   if (exchangeError) {
     console.error('Erro ao trocar o código por sessão:', exchangeError)
     return NextResponse.redirect(`${origin}/login?error=exchange_failed`)
   }
 
-  // 🔹 Obtém o usuário autenticado
   const {
     data: { user },
     error: userError,
@@ -38,58 +32,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=user_not_found`)
   }
 
-  console.log('✅ Sessão criada para:', user.email)
-
-  // 🔹 Verifica se já existe um membro vinculado a este usuário
-  const { data: existingMembers, error: memberFetchError } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('app_members')
-    .select('id, org_id')
+    .select('org_id, role, status')
     .eq('user_id', user.id)
+    .eq('status', 'active')
+    .maybeSingle()
 
-  if (memberFetchError) {
-    console.error('Erro ao verificar membro existente:', memberFetchError)
+  if (memberError) {
+    console.error('Erro ao verificar membro existente:', memberError)
+    return response
   }
 
-  const existingMember = existingMembers?.[0] || null
-
-  if (!existingMember) {
-    console.log('🆕 Novo usuário detectado — criando organização e membro...')
-
-    // 🔸 Cria nova organização
-    const { data: org, error: orgError } = await supabase
-      .from('app_orgs')
-      .insert({
-        name: user.user_metadata?.full_name || 'Minha Organização',
-        owner_user_id: user.id,
+  if (member?.org_id) {
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          org_id: member.org_id,
+          role: member.role,
+        },
       })
-      .select('id')
-      .single()
-
-    if (orgError) {
-      console.error('Erro ao criar organização:', orgError)
-      return NextResponse.redirect(`${origin}/login?error=org_create_failed`)
+    } catch (error) {
+      console.error('Erro ao atualizar metadados do usuário:', error)
     }
 
-    // 🔸 Cria membro vinculado
-    const { error: memberError } = await supabase.from('app_members').insert({
-      user_id: user.id,
-      org_id: org.id,
-      full_name: user.user_metadata?.full_name || user.email,
-      invited_email: user.email,
-      role: 'owner',
-      status: 'active',
-    })
-
-    if (memberError) {
-      console.error('Erro ao criar membro:', memberError)
-      return NextResponse.redirect(`${origin}/login?error=member_create_failed`)
-    }
-
-    console.log('✅ Organização e membro criados com sucesso:', org.id)
-  } else {
-    console.log('👤 Usuário já é membro da org:', existingMember.org_id)
+    response.headers.set('Location', `${origin}/dashboard`)
   }
 
-  // 🔹 Redireciona para /setup (a lógica de org existente/dash é tratada lá)
   return response
 }

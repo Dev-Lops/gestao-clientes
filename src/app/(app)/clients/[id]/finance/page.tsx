@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
-import { getSessionProfile } from "@/lib/auth/session";
-import { roleSatisfies } from "@/lib/auth/rbac";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/services/auth/session";
+import { roleSatisfies } from "@/services/auth/rbac";
 import { redirect } from "next/navigation";
 
 type FinancePageProps = {
@@ -30,7 +31,8 @@ function formatDate(value: string | null | undefined) {
 export default async function FinancePage({ params }: FinancePageProps) {
   const { id } = params;
   const session = await getSessionProfile();
-  const { supabase, role, orgId, user } = session;
+  const { role, orgId, user } = session;
+  const supabase = await createSupabaseServerClient();
 
   if (!user) {
     redirect("/login");

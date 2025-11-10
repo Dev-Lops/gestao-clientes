@@ -1,23 +1,23 @@
-import { createBrowserClient } from '@supabase/ssr'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-let browserClient: SupabaseClient | null = null
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/config/env";
 
-export function createBrowserSupabaseClient(): SupabaseClient {
+let browserClient: SupabaseClient | null = null;
+
+function getSupabaseCredentials() {
+  return {
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+  } as const;
+}
+
+export function createSupabaseBrowserClient(): SupabaseClient {
   if (browserClient) {
-    return browserClient
+    return browserClient;
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!url || !anonKey) {
-    throw new Error('Supabase URL ou Anon Key ausentes nas variáveis de ambiente.')
-  }
-  if (!url || !anonKey) {
-    throw new Error('Supabase URL ou Anon Key ausentes nas variáveis de ambiente.')
-  }
-
-  browserClient = createBrowserClient(url, anonKey)
-  return browserClient
+  const { url, anonKey } = getSupabaseCredentials();
+  browserClient = createBrowserClient(url, anonKey);
+  return browserClient;
 }

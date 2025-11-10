@@ -1,24 +1,23 @@
-"use client"
+"use client";
 
-import { motion } from "framer-motion"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { Suspense, useEffect, useMemo, useRef, useState } from "react"
+import { motion } from "framer-motion";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
+import { DashboardSkeleton } from "@/components/shared/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 import type {
   AppClient,
   AppTask,
   ContentCalendarItem,
   OrgClientStats,
-} from "@/types/tables"
-import { format, parseISO } from "date-fns"
+} from "@/types/tables";
+import { format, parseISO } from "date-fns";
 
 const EMPTY_CLIENTS: AppClient[] = []
 const EMPTY_TASKS: AppTask[] = []
@@ -44,11 +43,10 @@ export default function DashboardPage() {
 }
 
 function RealtimeDashboard() {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
   const clients =
     (useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? EMPTY_CLIENTS
