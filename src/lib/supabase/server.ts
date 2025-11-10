@@ -16,7 +16,7 @@ function getSupabaseCredentials() {
 }
 
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const { url, anonKey } = getSupabaseCredentials();
 
   return createServerClient(url, anonKey, {
