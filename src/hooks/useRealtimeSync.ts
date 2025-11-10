@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/browser'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
 import { useAppStore } from '@/store/appStore'
 import { SyncedTable, TableMap } from '@/types/tables'
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
@@ -15,7 +15,7 @@ export function useRealtimeSync<K extends SyncedTable>(params: {
 }) {
   const { table, orgId, initialData } = params
 
-  const supabase = useMemo(() => createClient(), [])
+  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
   const setTable = useAppStore((s) => s.setTable)
   const upsertRow = useAppStore((s) => s.upsertRow)
   const removeRow = useAppStore((s) => s.removeRow)

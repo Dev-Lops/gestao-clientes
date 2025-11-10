@@ -10,6 +10,40 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+async function uploadMediaThroughApi(
+  formData: FormData,
+  onProgress: (percent: number) => void
+) {
+  return new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", "/api/upload");
+    request.responseType = "json";
+
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve();
+        return;
+      }
+
+      const response = request.response as { error?: string } | null;
+      reject(new Error(response?.error ?? "Falha no upload."));
+    };
+
+    request.onerror = () => {
+      reject(new Error("Falha no upload."));
+    };
+
+    request.send(formData);
+  });
+}
+
 interface MediaNewFormProps {
   clientId: string;
   folder: string;
@@ -52,28 +86,14 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       if (subfolder) formData.append("subfolder", subfolder);
       formData.append("title", title || file.name);
 
-      // Envia o arquivo com progresso
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/upload");
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setProgress(percent);
-          }
-        };
-
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject());
-        xhr.onerror = () => reject(new Error("Falha no upload."));
-        xhr.send(formData);
-      });
+      await uploadMediaThroughApi(formData, setProgress);
 
       toast.success("Upload concluído!");
       router.push(`/clients/${clientId}/media?folder=${folder}${subfolder ? `&sub=${subfolder}` : ""}`);
     } catch (err) {
       console.error(err);
-      toast.error("Erro ao enviar arquivo.");
+      const message = err instanceof Error ? err.message : "Erro ao enviar arquivo.";
+      toast.error(message);
     } finally {
       setIsUploading(false);
     }

@@ -4,7 +4,12 @@ export async function GET() {
   try {
     const { supabase, orgId } = await getSessionProfile()
 
-    // 🔹 Busca membros sem depender de colunas inexistentes
+    if (!orgId) {
+      return new Response(JSON.stringify({ error: 'Organização não encontrada para o usuário autenticado.' }), {
+        status: 401,
+      })
+    }
+
     const { data, error } = await supabase
       .from('app_members')
       .select(
@@ -22,19 +27,17 @@ export async function GET() {
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('Erro na query:', error)
+      console.error('Erro na consulta de membros:', error)
       throw error
     }
 
     return Response.json({ data })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro desconhecido'
     console.error('Erro na API /api/members:', err)
-    return new Response(
-      JSON.stringify({
-        error: 'Falha ao buscar membros',
-        details: err.message,
-      }),
-      { status: 500 }
-    )
+
+    return new Response(JSON.stringify({ error: 'Falha ao buscar membros', details: message }), {
+      status: 500,
+    })
   }
 }

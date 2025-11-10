@@ -9,7 +9,7 @@ import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { createClient } from "@/lib/supabase/browser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type {
   AppClient,
@@ -41,7 +41,7 @@ export default function DashboardPage() {
 }
 
 function RealtimeDashboard() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);

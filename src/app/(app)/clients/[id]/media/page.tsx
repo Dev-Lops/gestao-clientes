@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MEDIA_FOLDERS, type MediaFolder, isMediaFolder } from "@/lib/constants/media";
-import { createClient } from "@/lib/supabase/client";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { Download, FileText, FolderOpen, FolderPlus, Plus, Trash2 } from "lucide-react";
 import Image from "next/image";
@@ -45,7 +45,7 @@ export default function MediaListPage() {
   const subfolderParam = searchParams.get("sub");
   const folder: MediaFolder | "" = isMediaFolder(folderParam) ? folderParam : "";
 
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [folders, setFolders] = useState<CustomFolder[]>([]);
@@ -234,7 +234,7 @@ export default function MediaListPage() {
 Card de mídia
 ------------------------ */
 function MediaCard({ item }: { item: MediaItem }) {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [publicUrl, setPublicUrl] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(true);
 
