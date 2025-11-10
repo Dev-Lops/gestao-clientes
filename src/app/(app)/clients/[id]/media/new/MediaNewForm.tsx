@@ -44,40 +44,6 @@ async function uploadMediaThroughApi(
   });
 }
 
-async function uploadMediaThroughApi(
-  formData: FormData,
-  onProgress: (percent: number) => void
-) {
-  return new Promise<void>((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("POST", "/api/upload");
-    request.responseType = "json";
-
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onProgress(percent);
-      }
-    };
-
-    request.onload = () => {
-      if (request.status >= 200 && request.status < 300) {
-        resolve();
-        return;
-      }
-
-      const response = request.response as { error?: string } | null;
-      reject(new Error(response?.error ?? "Falha no upload."));
-    };
-
-    request.onerror = () => {
-      reject(new Error("Falha no upload."));
-    };
-
-    request.send(formData);
-  });
-}
-
 interface MediaNewFormProps {
   clientId: string;
   folder: string;
@@ -93,14 +59,15 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Gera preview
   useEffect(() => {
     if (file) {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       return () => URL.revokeObjectURL(url);
     }
+
     setPreviewUrl(null);
+    return undefined;
   }, [file]);
 
   async function handleUpload(e: React.FormEvent<HTMLFormElement>) {
@@ -123,10 +90,13 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       await uploadMediaThroughApi(formData, setProgress);
 
       toast.success("Upload concluído com sucesso!");
-      router.push(`/clients/${clientId}/media?folder=${folder}${subfolder ? `&sub=${subfolder}` : ""}`);
+      const params = new URLSearchParams({ folder });
+      if (subfolder) params.set("sub", subfolder);
+      router.push(`/clients/${clientId}/media?${params.toString()}`);
     } catch (err) {
       console.error(err);
       const message = err instanceof Error ? err.message : "Erro ao enviar arquivo.";
+      setError(message);
       toast.error(message);
     } finally {
       setIsUploading(false);
@@ -141,7 +111,6 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       </h2>
 
       <form onSubmit={handleUpload} className="space-y-6">
-        {/* Título */}
         <div className="space-y-1">
           <Label htmlFor="title">Título</Label>
           <Input
@@ -152,7 +121,6 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
           />
         </div>
 
-        {/* Seleção de arquivo */}
         <div className="space-y-1">
           <Label htmlFor="file">Arquivo</Label>
           <Input
@@ -163,7 +131,6 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
           />
         </div>
 
-        {/* Preview */}
         {previewUrl && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="text-sm font-medium text-slate-700 mb-2">Pré-visualização</p>
@@ -185,20 +152,14 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
           </div>
         )}
 
-        {/* Barra de progresso */}
         {isUploading && (
           <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-indigo-600 transition-all"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
           </div>
         )}
 
-        {/* Erro */}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {/* Botão enviar */}
         <Button
           type="submit"
           disabled={isUploading}
@@ -209,10 +170,8 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       </form>
 
       <p className="text-xs text-slate-500 text-center mt-2">
-        O arquivo será salvo em:{" "}
-        <span className="text-indigo-600 font-medium">
-          {folder} {subfolder ? `/ ${subfolder}` : ""}
-        </span>
+        O arquivo será salvo em: <span className="text-indigo-600 font-medium">{folder}</span>
+        {subfolder ? <span className="text-indigo-600 font-medium">{` / ${subfolder}`}</span> : null}
       </p>
     </Card>
   );
