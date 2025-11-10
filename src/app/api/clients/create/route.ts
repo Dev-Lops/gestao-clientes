@@ -64,7 +64,7 @@ export async function POST(req: Request) {
     const insertData = {
       org_id: orgId,
       name: body.name.trim(),
-      status: body.status ?? 'Novo',
+      status: body.status ?? 'new',
       plan: body.plan ?? null,
       main_channel: body.main_channel ?? null,
       account_manager: body.account_manager ?? null,

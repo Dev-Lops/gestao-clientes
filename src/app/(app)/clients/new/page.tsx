@@ -1,23 +1,12 @@
-'use server';
-
-<<<<<<< HEAD
-import { getSessionProfile } from '@/lib/auth/session';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-=======
-import { roleSatisfies } from "@/lib/auth/rbac";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { can, isOwner } from "@/lib/auth/rbac";
 import { getSessionProfile } from "@/lib/auth/session";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
-
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-
-import { can, isOwner } from '@/lib/auth/rbac';
 
 /* ----------------------------------------------------------
    🔹 Tipos auxiliares
@@ -109,7 +98,7 @@ export async function createClientAction(formData: FormData): Promise<void> {
       org_id: orgId,
       name: payload.name,
       plan: payload.plan,
-      status: 'Novo',
+      status: 'new',
       main_channel: payload.main_channel,
       created_by: user.id,
       start_date: payload.start_date,
