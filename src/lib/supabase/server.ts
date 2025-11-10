@@ -1,7 +1,8 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+
+type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
 function getSupabaseCredentials() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,7 +41,7 @@ export async function createServerSupabaseClient() {
 }
 
 export function createRouteHandlerClient(
-  cookieStore: ReadonlyRequestCookies,
+  cookieStore: CookieStore,
   response: NextResponse
 ) {
   const { url, anonKey } = getSupabaseCredentials();
