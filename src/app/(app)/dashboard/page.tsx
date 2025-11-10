@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
-import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
+import { DashboardSkeleton } from "@/components/shared/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useAppStore } from "@/store/appStore";
 import type {
   AppClient,
@@ -43,7 +43,7 @@ export default function DashboardPage() {
 }
 
 function RealtimeDashboard() {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);

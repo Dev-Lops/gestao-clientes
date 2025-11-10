@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabaseClient'
 import { revalidatePath } from 'next/cache'
 
 export async function POST(

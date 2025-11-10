@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabaseClient";
 import { redirect } from "next/navigation";
 
 export default async function Home() {

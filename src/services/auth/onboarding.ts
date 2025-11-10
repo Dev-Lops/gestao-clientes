@@ -1,7 +1,7 @@
-import { parseRole, type Role } from '@/lib/auth/rbac'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { parseRole, type AppRole } from "@/services/auth/rbac";
+import { createServerSupabaseClient } from "@/lib/supabaseClient";
 
-import type { User } from '@supabase/supabase-js'
+import type { User } from "@supabase/supabase-js";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
 type ServerClient = SupabaseServerClient
@@ -9,16 +9,16 @@ type ServerClient = SupabaseServerClient
 async function syncUserRoleMetadata(
   supabase: ServerClient,
   user: User,
-  nextRole: Role
+  nextRole: AppRole
 ): Promise<void> {
-  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>
-  const currentRole = parseRole(metadata.role as string | null)
+  const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const currentRole = parseRole(metadata.role as string | null);
 
-  if (currentRole === nextRole) return
+  if (currentRole === nextRole) return;
 
   await supabase.auth.updateUser({
     data: { ...metadata, role: nextRole },
-  })
+  });
 }
 
 export async function completeUserOnboarding(supabase: ServerClient) {

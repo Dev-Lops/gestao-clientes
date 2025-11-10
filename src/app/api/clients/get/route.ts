@@ -1,4 +1,9 @@
+<<<<<<< HEAD
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { getSessionProfile } from "@/services/auth/session";
+=======
 import { getSessionProfile } from "@/lib/auth/session";
+>>>>>>> main
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -9,7 +14,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing client ID" }, { status: 400 });
     }
 
+<<<<<<< HEAD
+    const { user, orgId } = await getSessionProfile();
+=======
     const { supabase, user, orgId } = await getSessionProfile();
+>>>>>>> main
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,6 +27,8 @@ export async function GET(request: NextRequest) {
     if (!orgId) {
       return NextResponse.json({ error: "Missing organization ID" }, { status: 400 });
     }
+
+    const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("app_clients")

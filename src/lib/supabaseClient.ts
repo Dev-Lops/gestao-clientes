@@ -1,22 +1,24 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import {
+  createBrowserClient,
+  createServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/config/env";
+
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
+let browserClient: SupabaseClient | null = null;
+
 function getSupabaseCredentials() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    throw new Error("Supabase URL ou Anon Key não configurados nas variáveis de ambiente.");
-  }
-
-  return { url, anonKey };
+  return { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY };
 }
 
-export async function createServerSupabaseClient() {
-  const cookieStore = cookies();
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies();
   const { url, anonKey } = getSupabaseCredentials();
 
   return createServerClient(url, anonKey, {
@@ -40,7 +42,7 @@ export async function createServerSupabaseClient() {
   });
 }
 
-export function createRouteHandlerClient(
+export function createSupabaseRouteHandlerClient(
   cookieStore: CookieStore,
   response: NextResponse
 ) {
@@ -60,3 +62,17 @@ export function createRouteHandlerClient(
     },
   });
 }
+
+export function createSupabaseBrowserClient(): SupabaseClient {
+  if (browserClient) {
+    return browserClient;
+  }
+
+  const { url, anonKey } = getSupabaseCredentials();
+  browserClient = createBrowserClient(url, anonKey);
+  return browserClient;
+}
+
+// Backwards compatibility with previous helper names
+export const createServerSupabaseClient = createSupabaseServerClient;
+export const createRouteHandlerClient = createSupabaseRouteHandlerClient;

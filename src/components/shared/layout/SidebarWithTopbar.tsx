@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { can, type AppRole } from "@/lib/auth/rbac";
+import { can, type AppRole } from "@/services/auth/rbac";
 
 import { cn } from "@/lib/utils";
 import {

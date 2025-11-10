@@ -1,11 +1,17 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@/lib/supabaseClient'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
-  // Cria Supabase client com acesso aos cookies da requisição/resposta
-  const supabase = await createServerSupabaseClient()
+  const cookieStore = await cookies()
+  const redirectUrl = new URL(
+    '/auth/login',
+    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  )
 
-  // Faz logout e limpa sessão
+  const response = NextResponse.redirect(redirectUrl)
+  const supabase = createRouteHandlerClient(cookieStore, response)
+
   const { error } = await supabase.auth.signOut()
 
   if (error) {
@@ -13,12 +19,5 @@ export async function POST() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // ✅ O Supabase já limpa o cookie automaticamente
-  // Você só precisa redirecionar para o login
-  return NextResponse.redirect(
-    new URL(
-      '/auth/login',
-      process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-    )
-  )
+  return response
 }

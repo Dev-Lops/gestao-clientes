@@ -1,7 +1,8 @@
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { roleSatisfies } from "@/lib/auth/rbac";
-import { getSessionProfile } from "@/lib/auth/session";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { roleSatisfies } from "@/services/auth/rbac";
+import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 
 type BrandingPageProps = {
@@ -36,7 +37,8 @@ function formatList(value: string | string[] | null | undefined): string {
 export default async function BrandingPage({ params }: BrandingPageProps) {
   const { id } = params;
   const session = await getSessionProfile();
-  const { supabase, user, role, orgId } = session;
+  const { user, role, orgId } = session;
+  const supabase = await createSupabaseServerClient();
 
   if (!user) {
     redirect("/login");
@@ -136,7 +138,7 @@ export default async function BrandingPage({ params }: BrandingPageProps) {
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
             {branding?.references && branding.references.length > 0 ? (
               <ul className="list-inside list-disc space-y-1">
-                {branding.references.map((item) => (
+                {branding.references.map((item: string) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>

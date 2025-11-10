@@ -1,6 +1,6 @@
 'use client'
 
-import { AppRealtimeProvider } from '@/providers/AppRealtimeProvider'
+import { AppRealtimeProvider } from "@/components/shared/providers/AppRealtimeProvider";
 
 /**
  * Client-side wrapper para inicializar o Supabase realtime.
@@ -10,8 +10,8 @@ export default function RealtimeWrapper({
   orgId,
   children,
 }: {
-  orgId: string
-  children: React.ReactNode
+  orgId: string;
+  children: React.ReactNode;
 }) {
-  return <AppRealtimeProvider orgId={orgId}>{children}</AppRealtimeProvider>
+  return <AppRealtimeProvider orgId={orgId}>{children}</AppRealtimeProvider>;
 }

@@ -1,5 +1,5 @@
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { SyncedTable, TableMap } from "@/types/tables";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import type { SyncedTable, TableMap } from "@/types/tables";
 
 /**
  * Busca dados iniciais de uma tabela para a organização atual.
@@ -8,7 +8,7 @@ export async function fetchInitialData<K extends SyncedTable>(
   table: K,
   orgId: string
 ): Promise<TableMap[K][]> {
-  const supabase = createBrowserSupabaseClient();
+  const supabase = createSupabaseBrowserClient();
 
   const actualTable =
     table === "org_client_stats" ? "org_client_stats_view" : table;

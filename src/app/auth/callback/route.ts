@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createRouteHandlerClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@/lib/supabaseClient'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 

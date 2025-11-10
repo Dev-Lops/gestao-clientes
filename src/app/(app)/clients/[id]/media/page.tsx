@@ -1,6 +1,6 @@
 "use client";
 
-import { DeleteMediaButton } from "@/components/DeleteMediaButton";
+import { DeleteMediaButton } from "@/features/media/components/DeleteMediaButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import {
   Clock,
   Download,
@@ -50,7 +50,7 @@ export default function ClientMediaPage() {
   const folder = searchParams.get("folder") ?? "";
   const subfolder = searchParams.get("sub") ?? "";
 
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
@@ -293,7 +293,7 @@ export default function ClientMediaPage() {
 }
 
 function MediaCard({ item }: { item: MediaItem }) {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [url, setUrl] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(true);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { createBrowserSupabaseClient as createClient } from "@/lib/supabase/client";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 
 import { Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -13,7 +13,7 @@ interface DeleteMediaButtonProps {
 }
 
 export function DeleteMediaButton({ itemId, filePath }: DeleteMediaButtonProps) {
-  const supabase = createClient();
+  const supabase = createSupabaseBrowserClient();
   const [loading, setLoading] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
 

@@ -1,6 +1,6 @@
-import { SidebarWithTopbar } from "@/components/layout/SidebarWithTopbar";
-import RealtimeWrapper from "@/components/RealtimeWrapper";
-import { getSessionProfile } from "@/lib/auth/session";
+import { SidebarWithTopbar } from "@/components/shared/layout/SidebarWithTopbar";
+import RealtimeWrapper from "@/components/shared/RealtimeWrapper";
+import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 
 /**

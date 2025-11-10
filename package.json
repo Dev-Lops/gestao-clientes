@@ -3,10 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "next lint",
+    "format": "eslint --fix --ext .ts,.tsx src",
+    "type-check": "tsc --noEmit",
+    "test": "node --test"
   },
   "dependencies": {
     "@edge-runtime/cookies": "^6.0.0",
