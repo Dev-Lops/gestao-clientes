@@ -1,6 +1,6 @@
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 
 const schema = z.object({
   access_token: z.string().min(10),
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     return response;
   } catch (err) {
-    if (err instanceof z.ZodError) {
+    if (err instanceof ZodError) {
       return NextResponse.json(
         { error: "Payload inválido", issues: err.issues },
         { status: 400 },

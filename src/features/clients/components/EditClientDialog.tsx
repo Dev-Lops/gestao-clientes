@@ -50,7 +50,7 @@ export function EditClientDialog({
   }, [client]);
 
   const handleChange = (key: keyof AppClient, value: string | number) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev: Partial<AppClient>) => ({ ...prev, [key]: value }));
 
   async function handleSubmit() {
     if (!form.id) return;

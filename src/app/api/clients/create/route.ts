@@ -1,6 +1,6 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/services/auth/session";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 
 import type { AppClient } from "@/types/tables";
 import { NextResponse } from "next/server";
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       { status: 201 },
     );
   } catch (error) {
-    if (error instanceof z.ZodError) {
+    if (error instanceof ZodError) {
       return NextResponse.json(
         { ok: false, message: "Dados inválidos", issues: error.issues },
         { status: 400 },

@@ -5,10 +5,7 @@ import type { Database } from "@/types/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef } from "react";
 
-const REALTIME_TABLE_MAP: Record<
-  SyncedTable,
-  keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]
-> = {
+const REALTIME_TABLE_MAP: Record<SyncedTable, string> = {
   app_clients: "app_clients",
   app_tasks: "app_tasks",
   app_orgs: "app_orgs",
@@ -55,7 +52,7 @@ export function useRealtimeSync<K extends SyncedTable>(params: {
     const channel = supabase
       .channel(`realtime_${table}_${orgId}`)
       .on(
-        "postgres_changes",
+        "postgres_changes" as const,
         { event: "*", schema: "public", table: realtimeTable },
         (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
           const { eventType, new: newRowRaw, old: oldRowRaw } = payload;
