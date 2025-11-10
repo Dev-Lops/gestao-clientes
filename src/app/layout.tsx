@@ -1,4 +1,4 @@
-import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
@@ -12,10 +12,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <body className="bg-slate-50 text-slate-900 antialiased">
-        <SupabaseProvider>
-          {children}
-          <Toaster richColors position="top-right" />
-        </SupabaseProvider>
+        {children}
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

@@ -1,28 +1,38 @@
 import { SidebarWithTopbar } from "@/components/layout/SidebarWithTopbar";
+import RealtimeWrapper from "@/components/RealtimeWrapper";
 import { getSessionProfile } from "@/lib/auth/session";
-import { AppRealtimeProvider } from "@/providers/AppRealtimeProvider";
 import { redirect } from "next/navigation";
 
+/**
+ * Layout principal do painel autenticado.
+ * Executa no servidor (SSR) — NÃO pode conter código client-side.
+ */
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // 🔹 Carrega sessão atual (user, role, orgId)
   const { user, orgId, role } = await getSessionProfile();
 
-  if (!user) {
-    redirect("/login");
-  }
+  // 🔹 Se não estiver logado → login
+  if (!user) redirect("/login");
 
-  if (!orgId) {
-    redirect("/setup");
-  }
+  // 🔹 Se não tiver organização associada → setup
+  if (!orgId) redirect("/setup");
+
+  // 🔹 Roles válidos no painel
+  const allowedRoles = ["owner", "manager", "member"];
+  const effectiveRole = allowedRoles.includes(role || "") ? role : "member";
 
   return (
-    <AppRealtimeProvider orgId={orgId}>
-      <SidebarWithTopbar role={role ?? "member"} userName={user.user_metadata?.full_name}>
+    <RealtimeWrapper orgId={orgId}>
+      <SidebarWithTopbar
+        role={effectiveRole}
+        userName={user.user_metadata?.full_name ?? user.email ?? "Usuário"}
+      >
         {children}
       </SidebarWithTopbar>
-    </AppRealtimeProvider>
+    </RealtimeWrapper>
   );
 }

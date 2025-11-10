@@ -2,7 +2,9 @@ import { getSessionProfile } from '@/lib/auth/session'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
+    const id = request.nextUrl.searchParams.get('id')
     const id = request.nextUrl.searchParams.get('id')
 
     if (!id) {
@@ -17,12 +19,14 @@ export async function GET(request: NextRequest) {
 
     if (!orgId) {
       return NextResponse.json({ error: 'Missing organization ID' }, { status: 400 })
+      return NextResponse.json({ error: 'Missing organization ID' }, { status: 400 })
     }
 
     const { data, error } = await supabase
       .from('app_clients')
       .select('*')
       .eq('id', id)
+      .eq('org_id', orgId)
       .eq('org_id', orgId)
       .single()
 

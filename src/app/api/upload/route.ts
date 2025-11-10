@@ -1,97 +1,94 @@
-import { getSessionProfile } from '@/lib/auth/session'
+import { createServerClient } from '@supabase/ssr'
+import { randomUUID } from 'crypto'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-export const runtime = 'nodejs'
-
-function slugify(name: string) {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .toLowerCase()
-}
-
+/**
+ * ✅ Upload handler oficial
+ * - Autentica com Supabase via cookies
+ * - Salva no bucket "media"
+ * - Cria registro em app_media_items
+ */
 export async function POST(req: Request) {
   try {
-    console.log('📥 [UPLOAD] Iniciando upload...')
-    const { supabase, user, orgId } = await getSessionProfile()
-    if (!orgId || !user) throw new Error('Sessão inválida.')
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
+    const clientId = formData.get('clientId')?.toString()
+    const folder = formData.get('folder')?.toString() || ''
+    const subfolder = formData.get('subfolder')?.toString() || null
+    const title = formData.get('title')?.toString() || file?.name || 'sem_nome'
 
-    const form = await req.formData()
-    const file = form.get('file')
-    const clientId = String(form.get('clientId') || '')
-    const folder = String(form.get('folder') || '')
-    const subfolder = String(form.get('subfolder') || '') // 👈 NOVO
-    const title = String(form.get('title') || '')
+    if (!file || !clientId) {
+      return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
+    }
 
-    console.log('📄 Dados recebidos:', {
-      clientId,
-      folder,
-      subfolder,
-      title,
-      file: file instanceof File ? file.name : '❌ Nenhum arquivo',
-    })
+    const cookieStore = await cookies()
 
-    if (!(file instanceof File))
-      throw new Error('Arquivo não encontrado no formulário.')
-    if (!clientId || !folder)
-      throw new Error('Faltam informações obrigatórias (clientId/folder).')
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {}, // sem escrita aqui
+        },
+      }
+    )
 
-    // Montagem segura do caminho
-    const ext = file.name.match(/\.[a-z0-9]+$/i)?.[0]?.toLowerCase() || ''
-    const base = slugify(file.name.replace(ext, ''))
-    const filename = `${Date.now()}_${base}${ext}`
+    // 🔹 Autenticação
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
 
-    const folderPath = [
-      orgId,
-      clientId,
-      slugify(folder),
-      subfolder ? slugify(subfolder) : '',
-    ]
-      .filter(Boolean)
-      .join('/')
+    if (authError || !user)
+      return NextResponse.json(
+        { error: 'Usuário não autenticado.' },
+        { status: 401 }
+      )
 
-    const storagePath = `${folderPath}/${filename}`
-    console.log('📂 Caminho no storage:', storagePath)
+    // 🔹 Caminho no storage
+    const path = `${clientId}/${folder}${
+      subfolder ? `/${subfolder}` : ''
+    }/${randomUUID()}-${file.name}`
 
-    // Upload para o Supabase Storage
-    const arrayBuffer = await file.arrayBuffer()
-    const { error: uploadErr } = await supabase.storage
+    // 🔹 Upload no Storage
+    const { error: uploadError } = await supabase.storage
       .from('media')
-      .upload(storagePath, new Uint8Array(arrayBuffer), {
-        contentType: file.type,
-        upsert: false,
+      .upload(path, file, { upsert: false })
+
+    if (uploadError) throw uploadError
+
+    // 🔹 Descobre org_id via app_members
+    const { data: member } = await supabase
+      .from('app_members')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const orgId = member?.org_id ?? null
+
+    // 🔹 Cria registro no banco
+    const { error: insertError } = await supabase
+      .from('app_media_items')
+      .insert({
+        client_id: clientId,
+        org_id: orgId,
+        folder,
+        subfolder,
+        title,
+        file_path: path,
+        created_by: user.id,
       })
 
-    if (uploadErr) {
-      console.error('❌ Erro ao subir arquivo:', uploadErr)
-      throw new Error(uploadErr.message)
-    }
+    if (insertError) throw insertError
 
-    // Inserção no banco de dados
-    const { error: insertErr } = await supabase.from('app_media_items').insert({
-      org_id: orgId,
-      client_id: clientId,
-      folder,
-      subfolder: subfolder || null, // 👈 NOVO
-      title: title || file.name,
-      file_path: storagePath,
-      file_type: file.type,
-      file_size: file.size,
-      created_by: user.id,
-    })
-
-    if (insertErr) {
-      console.error('❌ Erro ao registrar no banco:', insertErr)
-      throw new Error(insertErr.message)
-    }
-
-    console.log('✅ Upload finalizado com sucesso!')
-    return NextResponse.json({ ok: true, path: storagePath }, { status: 201 })
-  } catch (err) {
-    console.error('🔥 ERRO GERAL NO UPLOAD:', err)
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ success: true, path })
+  } catch (err: unknown) {
+    console.error('❌ Upload error:', err)
+    return NextResponse.json(
+      { error: 'Falha ao fazer upload.' },
+      { status: 500 }
+    )
   }
 }

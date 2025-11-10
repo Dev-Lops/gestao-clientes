@@ -14,6 +14,9 @@ export function createBrowserSupabaseClient(): SupabaseClient {
   if (!url || !anonKey) {
     throw new Error('Supabase URL ou Anon Key ausentes nas variáveis de ambiente.')
   }
+  if (!url || !anonKey) {
+    throw new Error('Supabase URL ou Anon Key ausentes nas variáveis de ambiente.')
+  }
 
   browserClient = createBrowserClient(url, anonKey)
   return browserClient

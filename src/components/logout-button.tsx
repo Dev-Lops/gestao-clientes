@@ -4,10 +4,11 @@ import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 export default function LogoutButton() {
   const supabase = createBrowserSupabaseClient();
+  const supabase = createBrowserSupabaseClient();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    window.location.href = "/auth/login";
   };
 
   return (

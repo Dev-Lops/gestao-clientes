@@ -3,37 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-
 import { Edit2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
-
 import { updateClientInfo } from "@/app/(app)/clients/[id]/info/actions";
 import { EditClientDialog } from "@/components/EditClientDialog";
-
-
-interface Client {
-  id: string;
-  name: string;
-  status?: string;
-  plan?: string;
-  main_channel?: string;
-  account_manager?: string;
-  monthly_ticket?: number;
-  billing_day?: number;
-  payment_status?: string;
-  payment_method?: string;
-  meeting_date?: string;
-  payment_date?: string;
-  internal_notes?: string;
-  progress?: number;
-}
+import type { AppClient } from "@/types/tables";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export function ClientProfile({ initialData }: { initialData: Client }) {
-  const { data: client, mutate } = useSWR<Client>(
+export function ClientProfile({ initialData }: { initialData: AppClient }) {
+  const { data: client, mutate } = useSWR<AppClient>(
     `/api/client/${initialData.id}`,
     fetcher,
     {
@@ -44,13 +25,14 @@ export function ClientProfile({ initialData }: { initialData: Client }) {
 
   const [open, setOpen] = useState(false);
 
-  async function handleSave(updated: Partial<Client>) {
+  async function handleSave(updated: Partial<AppClient>) {
     if (!client) return;
 
     try {
       mutate({ ...client, ...updated }, false);
       const result = await updateClientInfo(updated);
-      if (result.ok) {
+
+      if (result.success) {
         toast.success("Informações atualizadas!");
         mutate();
         setOpen(false);
@@ -107,7 +89,7 @@ export function ClientProfile({ initialData }: { initialData: Client }) {
         open={open}
         setOpen={setOpen}
         client={client}
-        onSave={handleSave}
+        onSave={handleSave} // ✅ agora reconhecido
       />
     </div>
   );

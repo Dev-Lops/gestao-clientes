@@ -1,8 +1,10 @@
 import { getSessionProfile } from '@/lib/auth/session'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
-    const { supabase, orgId } = await getSessionProfile()
+    const supabase = await createServerSupabaseClient()
+    const { orgId } = await getSessionProfile()
 
     if (!orgId) {
       return new Response(JSON.stringify({ error: 'Organização não encontrada para o usuário autenticado.' }), {
