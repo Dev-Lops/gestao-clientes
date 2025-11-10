@@ -1,14 +1,14 @@
 'use server'
 
 import { getSessionProfile } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 /**
  * 🔹 Envia convite para novo membro (staff ou client)
  */
 export async function inviteStaffAction(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
 
   const { user, role, orgId } = await getSessionProfile()
 
@@ -38,7 +38,7 @@ export async function inviteStaffAction(formData: FormData) {
  * 🔹 Atualiza papel do membro
  */
 export async function updateMemberRoleAction(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
   const { user, role, orgId } = await getSessionProfile()
 
   if (!user) throw new Error('Usuário não autenticado.')
@@ -65,7 +65,7 @@ export async function updateMemberRoleAction(formData: FormData) {
  * 🔹 Exclui membro
  */
 export async function deleteMemberAction(formData: FormData) {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
   const { user, role, orgId } = await getSessionProfile()
 
   if (!user) throw new Error('Usuário não autenticado.')

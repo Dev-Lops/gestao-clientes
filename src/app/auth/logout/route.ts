@@ -1,9 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const cookieStore = await cookies()
+    const response = NextResponse.json(
+      { message: 'Sessão encerrada com sucesso.' },
+      { status: 200 }
+    )
+    const supabase = createRouteHandlerClient(cookieStore, response)
     const { error } = await supabase.auth.signOut()
 
     if (error) {
@@ -11,11 +17,8 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // ✅ Tudo certo: resposta simples (sem redirecionar ainda)
-    return NextResponse.json(
-      { message: 'Sessão encerrada com sucesso.' },
-      { status: 200 }
-    )
+    // ✅ Tudo certo: retorna resposta configurada (cookies atualizados via Supabase)
+    return response
   } catch (err) {
     console.error('Erro inesperado no logout:', err)
     return NextResponse.json(

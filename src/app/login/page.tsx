@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/browser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { Loader2, LogIn } from "lucide-react";
 import { useState } from "react";
 
@@ -9,7 +9,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
-    const supabase = createClient();
+    const supabase = createBrowserSupabaseClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

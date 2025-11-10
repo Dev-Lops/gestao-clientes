@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getSessionProfile } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -38,7 +38,7 @@ export default async function InviteClientPage({ params }: { params: Promise<{ i
     const email = formData.get("email")?.toString().trim();
     const fullName = formData.get("full_name")?.toString().trim() || "Cliente";
 
-    const supabase = await createClient();
+    const supabase = await createServerSupabaseClient();
 
     // 🔸 Cria membro vinculado ao cliente
     const { data: member, error } = await supabase

@@ -1,11 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('app_clients')
     .select('*')
