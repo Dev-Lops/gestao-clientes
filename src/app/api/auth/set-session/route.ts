@@ -6,8 +6,11 @@ export async function POST(req: Request) {
   try {
     const { access_token, refresh_token } = await req.json()
     const cookieStore = await cookies()
+<<<<<<< HEAD
     const response = NextResponse.json({ ok: true })
     const supabase = createRouteHandlerClient(cookieStore, response)
+=======
+>>>>>>> main
 
     const { error } = await supabase.auth.setSession({
       access_token,

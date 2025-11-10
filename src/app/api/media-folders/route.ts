@@ -1,10 +1,18 @@
+<<<<<<< HEAD
 import { createSupabaseServerClient } from "@/lib/supabaseClient";
 import { getSessionProfile } from "@/services/auth/session";
+=======
+import { getSessionProfile } from "@/lib/auth/session";
+>>>>>>> main
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
+<<<<<<< HEAD
     const { user, orgId } = await getSessionProfile();
+=======
+    const { supabase, user, orgId } = await getSessionProfile();
+>>>>>>> main
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -14,8 +22,11 @@ export async function GET() {
       return NextResponse.json({ error: "Missing organization context" }, { status: 400 });
     }
 
+<<<<<<< HEAD
     const supabase = await createSupabaseServerClient();
 
+=======
+>>>>>>> main
     const { data, error } = await supabase
       .from("app_media_items")
       .select("id, folder, title, client_id, created_at")

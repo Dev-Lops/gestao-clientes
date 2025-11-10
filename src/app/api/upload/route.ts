@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
     }
 
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
