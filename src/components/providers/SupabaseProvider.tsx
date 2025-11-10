@@ -5,7 +5,11 @@ import { SessionContextProvider } from "@supabase/auth-helpers-react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
+<<<<<<< HEAD
 
+=======
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
 interface SupabaseProviderProps {
   children: ReactNode;

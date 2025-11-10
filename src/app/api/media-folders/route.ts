@@ -6,9 +6,14 @@ import { NextResponse } from 'next/server'
  * - Usa o cliente Supabase no servidor (com cookies de sessão)
  * - Respeita políticas RLS automaticamente
  */
+<<<<<<< HEAD
 export async function GET(req: Request) {
   try {
     const supabase = await createServerSupabaseClient()
+=======
+export async function GET() {
+  const supabase = await createServerSupabaseClient()
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
     // 🔹 Obtem usuário autenticado
     const {

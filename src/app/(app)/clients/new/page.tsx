@@ -1,8 +1,15 @@
 'use server';
 
+<<<<<<< HEAD
 import { getSessionProfile } from '@/lib/auth/session';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+=======
+import { roleSatisfies } from "@/lib/auth/rbac";
+import { getSessionProfile } from "@/lib/auth/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

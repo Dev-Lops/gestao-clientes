@@ -1,43 +1,38 @@
+<<<<<<< HEAD
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+=======
+import { getSessionProfile } from '@/lib/auth/session'
+import { NextRequest, NextResponse } from 'next/server'
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get('id')
+    const id = request.nextUrl.searchParams.get('id')
 
     if (!id) {
       return NextResponse.json({ error: 'Missing client ID' }, { status: 400 })
     }
 
+<<<<<<< HEAD
     const supabase = await createServerSupabaseClient()
+=======
+    const { supabase, user, orgId } = await getSessionProfile()
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
-    // 🔒 1. Recupera o usuário autenticado
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 🔐 2. Busca o org_id do usuário logado (ex: salvo em user_metadata)
-    const orgId = user.user_metadata?.org_id
-
     if (!orgId) {
-      return NextResponse.json(
-        { error: 'Missing organization ID' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing organization ID' }, { status: 400 })
     }
 
-    // ✅ 3. Garante que o cliente pertence à mesma org
     const { data, error } = await supabase
       .from('app_clients')
       .select('*')
       .eq('id', id)
-      .eq('org_id', orgId) // <— filtro obrigatório
+      .eq('org_id', orgId)
       .single()
 
     if (error) {

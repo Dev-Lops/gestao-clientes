@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { createBrowserClient } from '@supabase/ssr'
 
 let supabase: ReturnType<typeof createBrowserClient> | null = null
@@ -20,3 +21,6 @@ export function createBrowserSupabaseClient() {
   }
   return supabase
 }
+=======
+export { createBrowserSupabaseClient } from './browser'
+>>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
