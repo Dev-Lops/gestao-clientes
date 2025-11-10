@@ -35,28 +35,14 @@ export function AppRealtimeProvider({
   // 🔸 Busca dados iniciais de todas as tabelas
   useEffect(() => {
     async function loadInitial() {
-      const result = {} as Partial<TableDataMap>
+      const results = await Promise.all(
+        TABLES.map(async (table) => {
+          const data = await fetchInitialData(table, orgId)
+          return [table, data] as const
+        })
+      )
 
-      for (const table of TABLES) {
-        const data = await fetchInitialData(table, orgId)
-
-        switch (table) {
-          case 'app_clients':
-            result[table] = data as TableMap['app_clients'][]
-            break
-          case 'app_tasks':
-            result[table] = data as TableMap['app_tasks'][]
-            break
-          case 'app_content_calendar':
-            result[table] = data as TableMap['app_content_calendar'][]
-            break
-          case 'org_client_stats':
-            result[table] = data as TableMap['org_client_stats'][]
-            break
-        }
-      }
-
-      setInitialData(result)
+      setInitialData(Object.fromEntries(results) as Partial<TableDataMap>)
     }
 
     if (orgId) void loadInitial()
