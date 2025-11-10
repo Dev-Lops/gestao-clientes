@@ -18,7 +18,7 @@ export function DeleteClientButton({
 
   const handleDelete = () => {
     const confirmed = confirm(
-      `Tem certeza que deseja excluir o cliente "${clientName}"?`
+      `Tem certeza que deseja excluir o cliente "${clientName}"?`,
     );
     if (!confirmed) return;
 

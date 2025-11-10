@@ -19,10 +19,10 @@ import type {
 } from "@/types/tables";
 import { format, parseISO } from "date-fns";
 
-const EMPTY_CLIENTS: AppClient[] = []
-const EMPTY_TASKS: AppTask[] = []
-const EMPTY_CALENDAR_ITEMS: ContentCalendarItem[] = []
-const EMPTY_STATS: OrgClientStats[] = []
+const EMPTY_CLIENTS: AppClient[] = [];
+const EMPTY_TASKS: AppTask[] = [];
+const EMPTY_CALENDAR_ITEMS: ContentCalendarItem[] = [];
+const EMPTY_STATS: OrgClientStats[] = [];
 
 const STATUS_LABELS: Record<string, string> = {
   new: "Novo",
@@ -30,16 +30,16 @@ const STATUS_LABELS: Record<string, string> = {
   active: "Ativo",
   paused: "Pausado",
   closed: "Encerrado",
-}
+};
 
-type KPI = { label: string; value: string | number; helper: string }
+type KPI = { label: string; value: string | number; helper: string };
 
 export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <RealtimeDashboard />
     </Suspense>
-  )
+  );
 }
 
 function RealtimeDashboard() {
@@ -49,130 +49,146 @@ function RealtimeDashboard() {
   const orgId = useAppStore((state) => state.orgId);
 
   const clients =
-    (useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? EMPTY_CLIENTS
+    (useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? EMPTY_CLIENTS;
   const tasks =
-    (useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? EMPTY_TASKS
+    (useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? EMPTY_TASKS;
   const agendaItems =
-    (useAppStore((s) => s.tables.app_content_calendar) as ContentCalendarItem[]) ??
-    EMPTY_CALENDAR_ITEMS
+    (useAppStore(
+      (s) => s.tables.app_content_calendar,
+    ) as ContentCalendarItem[]) ?? EMPTY_CALENDAR_ITEMS;
   const stats =
     ((useAppStore((s) => s.tables.org_client_stats) as OrgClientStats[]) ??
-      EMPTY_STATS)[0] ?? null
+      EMPTY_STATS)[0] ?? null;
 
-  const [loading, setLoading] = useState(() => clients.length === 0)
-  const [error, setError] = useState<string | null>(null)
-  const bootstrappedRef = useRef(false)
+  const [loading, setLoading] = useState(() => clients.length === 0);
+  const [error, setError] = useState<string | null>(null);
+  const bootstrappedRef = useRef(false);
 
   useEffect(() => {
-    if (!orgId || bootstrappedRef.current) return
+    if (!orgId || bootstrappedRef.current) return;
 
     if (clients.length > 0) {
-      bootstrappedRef.current = true
-      setLoading(false)
-      return
+      bootstrappedRef.current = true;
+      setLoading(false);
+      return;
     }
 
-    let ignore = false
+    let ignore = false;
+    const organizationId = orgId;
 
     async function fetchData() {
       try {
-        setLoading(true)
+        setLoading(true);
 
         const [statsRes, clientsRes, tasksRes, agendaRes] = await Promise.all([
           supabase
             .from("org_client_stats_view")
             .select(
-              "id, org_id, total, ativos, onboarding, pausados, media_progresso"
+              "id, org_id, total, ativos, onboarding, pausados, media_progresso",
             )
-            .eq("org_id", orgId)
+            .eq("org_id", organizationId)
             .limit(1),
 
           supabase
             .from("app_clients")
             .select("id, org_id, name, status, plan, main_channel, created_at")
-            .eq("org_id", orgId)
+            .eq("org_id", organizationId)
             .order("created_at", { ascending: false })
             .limit(6),
 
           supabase
             .from("app_tasks")
             .select(
-              "id, org_id, client_id, title, status, due_date, urgency, created_at"
+              "id, org_id, client_id, title, status, due_date, urgency, created_at",
             )
-            .eq("org_id", orgId)
+            .eq("org_id", organizationId)
             .limit(20),
 
           supabase
             .from("app_content_calendar")
             .select(
-              "id, org_id, created_by, event_date, title, notes, channel, created_at"
+              "id, org_id, created_by, event_date, title, notes, channel, created_at",
             )
-            .eq("org_id", orgId)
+            .eq("org_id", organizationId)
             .order("event_date", { ascending: true })
             .limit(14),
-        ])
+        ]);
 
-        if (statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error) {
+        if (
+          statsRes.error ||
+          clientsRes.error ||
+          tasksRes.error ||
+          agendaRes.error
+        ) {
           throw (
-            statsRes.error || clientsRes.error || tasksRes.error || agendaRes.error
-          )
+            statsRes.error ||
+            clientsRes.error ||
+            tasksRes.error ||
+            agendaRes.error
+          );
         }
-        const normalizedAgenda = ((agendaRes.data ?? []) as ContentCalendarItem[]).map(
-          (item) => ({
-            ...item,
-            date: item.event_date
-              ? format(parseISO(item.event_date), "yyyy-MM-dd")
-              : "",
-          })
-        )
+        const normalizedAgenda = (
+          (agendaRes.data ?? []) as ContentCalendarItem[]
+        ).map((item) => ({
+          ...item,
+          date: item.event_date
+            ? format(parseISO(item.event_date), "yyyy-MM-dd")
+            : "",
+        }));
 
+        setTable("org_client_stats", statsRes.data ?? []);
+        setTable("app_clients", clientsRes.data ?? []);
+        setTable("app_tasks", tasksRes.data ?? []);
+        setTable("app_content_calendar", normalizedAgenda);
 
-        setTable("org_client_stats", statsRes.data ?? [])
-        setTable("app_clients", clientsRes.data ?? [])
-        setTable("app_tasks", tasksRes.data ?? [])
-        setTable("app_content_calendar", normalizedAgenda)
-
-        bootstrappedRef.current = true
-        setLoading(false)
+        bootstrappedRef.current = true;
+        setLoading(false);
       } catch (err) {
-        console.error("🚨 Dashboard error:", err)
+        console.error("🚨 Dashboard error:", err);
         if (!ignore) {
-          setError("Falha ao carregar dados.")
-          setLoading(false)
+          setError("Falha ao carregar dados.");
+          setLoading(false);
         }
       }
     }
 
-    fetchData()
+    fetchData();
     return () => {
-      ignore = true
-    }
-  }, [clients.length, orgId, setTable, supabase])
+      ignore = true;
+    };
+  }, [clients.length, orgId, setTable, supabase]);
 
   useEffect(() => {
     if (error) {
-      const timeout = setTimeout(() => router.refresh(), 4000)
-      return () => clearTimeout(timeout)
+      const timeout = setTimeout(() => router.refresh(), 4000);
+      return () => clearTimeout(timeout);
     }
-  }, [error, router])
+  }, [error, router]);
 
-  if (!orgId) return <DashboardSkeleton />
-  if (loading) return <DashboardSkeleton />
+  if (!orgId) return <DashboardSkeleton />;
+  if (loading) return <DashboardSkeleton />;
   if (error)
-    return <div className="p-10 text-center text-red-600 font-medium">{error}</div>
+    return (
+      <div className="p-10 text-center text-red-600 font-medium">{error}</div>
+    );
 
-  const { ativos, onboarding, pausados, media_progresso } = stats ?? {}
+  const { ativos, onboarding, pausados, media_progresso } = stats ?? {};
 
   const atrasadas = tasks.filter((t) =>
-    ["blocked", "todo"].includes(t.status ?? "")
-  ).length
+    ["blocked", "todo"].includes(t.status ?? ""),
+  ).length;
 
   const urgentes = tasks.filter(
-    (t) => ["high", "critical"].includes(t.urgency ?? "") && t.status !== "done"
-  ).length
+    (t) =>
+      ["high", "critical"].includes(t.urgency ?? "") && t.status !== "done",
+  ).length;
 
   const kpis: KPI[] = [
-    { label: "Clientes ativos", value: ativos ?? 0, helper: "em acompanhamento" },
+    {
+      label: "Clientes ativos",
+      value: ativos ?? 0,
+      helper: "em acompanhamento",
+    },
     { label: "Em onboarding", value: onboarding ?? 0, helper: "em integração" },
     { label: "Pausados", value: pausados ?? 0, helper: "aguardando retorno" },
     {
@@ -180,7 +196,7 @@ function RealtimeDashboard() {
       value: `${media_progresso ?? 0}%`,
       helper: "dos planos ativos",
     },
-  ]
+  ];
 
   return (
     <motion.div
@@ -240,14 +256,16 @@ function RealtimeDashboard() {
           Últimos clientes
         </h2>
         {clients.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum cliente cadastrado ainda.</p>
+          <p className="text-sm text-slate-500">
+            Nenhum cliente cadastrado ainda.
+          </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clients.map((client) => {
               const label =
                 STATUS_LABELS[client.status ?? ""] ??
                 client.status ??
-                "Desconhecido"
+                "Desconhecido";
 
               const badgeClass =
                 label === "Ativo"
@@ -258,7 +276,7 @@ function RealtimeDashboard() {
                       ? "text-orange-500"
                       : label === "Encerrado"
                         ? "text-red-500"
-                        : "text-slate-500"
+                        : "text-slate-500";
 
               return (
                 <motion.div
@@ -268,7 +286,9 @@ function RealtimeDashboard() {
                 >
                   <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
                     <div className="flex flex-col gap-1">
-                      <h3 className="font-medium text-slate-900">{client.name}</h3>
+                      <h3 className="font-medium text-slate-900">
+                        {client.name}
+                      </h3>
                       <p className="text-xs text-slate-500">
                         Status: <span className={badgeClass}>{label}</span>
                       </p>
@@ -276,19 +296,19 @@ function RealtimeDashboard() {
                         Criado em:{" "}
                         {client.created_at
                           ? new Date(client.created_at).toLocaleDateString(
-                            "pt-BR",
-                            {
-                              weekday: "short",
-                              day: "2-digit",
-                              month: "short",
-                            }
-                          )
+                              "pt-BR",
+                              {
+                                weekday: "short",
+                                day: "2-digit",
+                                month: "short",
+                              },
+                            )
                           : "Data não definida"}
                       </p>
                     </div>
                   </Card>
                 </motion.div>
-              )
+              );
             })}
           </div>
         )}
@@ -316,10 +336,10 @@ function RealtimeDashboard() {
                   <p className="text-xs text-slate-500 mt-1">
                     {event.date
                       ? new Date(event.date).toLocaleDateString("pt-BR", {
-                        weekday: "short",
-                        day: "2-digit",
-                        month: "short",
-                      })
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "short",
+                        })
                       : "Data não definida"}
                   </p>
                   {event.notes && (
@@ -334,5 +354,5 @@ function RealtimeDashboard() {
         )}
       </section>
     </motion.div>
-  )
+  );
 }

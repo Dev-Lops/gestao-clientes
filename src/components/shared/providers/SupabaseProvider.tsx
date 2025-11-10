@@ -1,17 +1,17 @@
 "use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { Database } from "@/types/supabase";
 import { SessionContextProvider } from "@supabase/auth-helpers-react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-
 
 interface SupabaseProviderProps {
   children: ReactNode;
 }
 
 export function SupabaseProvider({ children }: SupabaseProviderProps) {
-  const [supabase] = useState<SupabaseClient | null>(() => {
+  const [supabase] = useState<SupabaseClient<Database> | null>(() => {
     try {
       return createSupabaseBrowserClient();
     } catch {

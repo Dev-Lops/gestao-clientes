@@ -1,26 +1,26 @@
-'use client'
+"use client";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import { Loader2, LogIn } from 'lucide-react'
-import { useState } from 'react'
+import { Loader2, LogIn } from "lucide-react";
+import { useState } from "react";
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
-    const supabase = createSupabaseBrowserClient()
-    setLoading(true)
+    const supabase = createSupabaseBrowserClient();
+    setLoading(true);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+      provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
-    })
+    });
 
-    if (error) console.error(error)
-    if (data?.url) window.location.href = data.url
-    setLoading(false)
+    if (error) console.error(error);
+    if (data?.url) window.location.href = data.url;
+    setLoading(false);
   }
 
   return (
@@ -46,5 +46,5 @@ export default function LoginPage() {
         </button>
       </div>
     </div>
-  )
+  );
 }

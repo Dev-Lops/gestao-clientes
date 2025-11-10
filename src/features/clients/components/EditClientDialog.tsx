@@ -50,7 +50,7 @@ export function EditClientDialog({
   }, [client]);
 
   const handleChange = (key: keyof AppClient, value: string | number) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev: Partial<AppClient>) => ({ ...prev, [key]: value }));
 
   async function handleSubmit() {
     if (!form.id) return;
@@ -149,7 +149,9 @@ export function EditClientDialog({
               <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 value={form.account_manager || ""}
-                onChange={(e) => handleChange("account_manager", e.target.value)}
+                onChange={(e) =>
+                  handleChange("account_manager", e.target.value)
+                }
                 className="pl-9 bg-white border border-slate-300 text-slate-800"
               />
             </div>
@@ -197,9 +199,7 @@ export function EditClientDialog({
               <FileText className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <Textarea
                 value={form.internal_notes || ""}
-                onChange={(e) =>
-                  handleChange("internal_notes", e.target.value)
-                }
+                onChange={(e) => handleChange("internal_notes", e.target.value)}
                 className="pl-9 bg-white border border-slate-300 text-slate-800 min-h-[120px]"
               />
             </div>

@@ -1,7 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, UploadCloud, X } from "lucide-react";
 import Image from "next/image";
@@ -65,7 +70,8 @@ export default function UploadModal({ clientId, folder }: UploadModalProps) {
         <DialogContent className="max-w-3xl p-6 rounded-3xl bg-white/90 backdrop-blur-md shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-slate-900">
-              Enviar arquivos para: <span className="text-indigo-600">{folder}</span>
+              Enviar arquivos para:{" "}
+              <span className="text-indigo-600">{folder}</span>
             </DialogTitle>
           </DialogHeader>
 
@@ -81,7 +87,9 @@ export default function UploadModal({ clientId, folder }: UploadModalProps) {
             className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-10 bg-gradient-to-r from-white to-slate-50 hover:shadow-md cursor-pointer transition"
           >
             <UploadCloud className="h-10 w-10 text-indigo-500" />
-            <p className="text-sm text-slate-600 mt-2">Clique ou arraste arquivos aqui</p>
+            <p className="text-sm text-slate-600 mt-2">
+              Clique ou arraste arquivos aqui
+            </p>
             <input
               title="clique"
               ref={inputRef}
@@ -110,7 +118,12 @@ export default function UploadModal({ clientId, folder }: UploadModalProps) {
                     >
                       <div className="aspect-[4/5] bg-slate-100 relative">
                         {isImage ? (
-                          <Image src={preview} alt={file.name} fill className="object-cover" />
+                          <Image
+                            src={preview}
+                            alt={file.name}
+                            fill
+                            className="object-cover"
+                          />
                         ) : (
                           <div className="flex items-center justify-center h-full text-slate-400">
                             <FileText className="h-10 w-10" />

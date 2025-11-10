@@ -12,7 +12,6 @@ import {
 import { toast } from "sonner";
 import { deleteTask } from "@/app/(app)/clients/[id]/tasks/actions";
 
-
 export function DeleteTaskButton({
   id,
   clientId,

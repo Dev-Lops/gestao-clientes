@@ -128,7 +128,9 @@ export default function SetupPage() {
         className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-white/10 p-8 text-center shadow-lg backdrop-blur-md"
       >
         <h1 className="text-3xl font-bold">Criar Organização</h1>
-        <p className="mb-2 text-white/70">Escolha um nome para sua organização para começar.</p>
+        <p className="mb-2 text-white/70">
+          Escolha um nome para sua organização para começar.
+        </p>
 
         <Input
           value={orgName}

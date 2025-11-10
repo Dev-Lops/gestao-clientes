@@ -1,6 +1,9 @@
 "use client";
 
-import { inviteStaffAction, updateMemberRoleAction } from "@/app/(app)/admin/members/actions";
+import {
+  inviteStaffAction,
+  updateMemberRoleAction,
+} from "@/app/(app)/admin/members/actions";
 import { DeleteMemberButton } from "@/features/admin/components/DeleteMemberButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,7 +82,7 @@ export default function MembersAdminPage() {
       acc[role] = (acc[role] || 0) + 1;
       return acc;
     },
-    { owner: 0, staff: 0, client: 0, guest: 0 }
+    { owner: 0, staff: 0, client: 0, guest: 0 },
   );
 
   // 🔹 Envio de convites
@@ -105,7 +108,8 @@ export default function MembersAdminPage() {
             Convidar novo membro
           </h2>
           <p className="text-sm text-slate-500">
-            Envie um convite por e-mail para liberar acesso como cliente ou membro da equipe.
+            Envie um convite por e-mail para liberar acesso como cliente ou
+            membro da equipe.
           </p>
         </div>
 
@@ -178,7 +182,9 @@ export default function MembersAdminPage() {
                   <p className="text-xs uppercase tracking-[0.15em] text-slate-400">
                     {ROLE_LABEL[roleKey]}
                   </p>
-                  <p className="text-3xl font-semibold text-slate-900">{count}</p>
+                  <p className="text-3xl font-semibold text-slate-900">
+                    {count}
+                  </p>
                   <p className="text-xs text-slate-500 mt-1">
                     {ROLE_DESCRIPTION[roleKey as Exclude<Role, "guest">]}
                   </p>
@@ -238,7 +244,7 @@ export default function MembersAdminPage() {
                       defaultValue={m.role || "client"}
                       className={cn(
                         "h-10 min-w-[130px] rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-all",
-                        "focus:outline-none focus:ring-2 focus:ring-indigo-600 hover:border-slate-300 hover:bg-slate-50"
+                        "focus:outline-none focus:ring-2 focus:ring-indigo-600 hover:border-slate-300 hover:bg-slate-50",
                       )}
                     >
                       <option value="owner">Proprietário</option>

@@ -1,47 +1,67 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/services/auth/session'
-import { revalidatePath } from 'next/cache'
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+} from "@/lib/supabase/server";
+import { getSessionProfile } from "@/services/auth/session";
+import { revalidatePath } from "next/cache";
 
 export async function POST(
-  req: Request,
-  { params }: { params: { id: string } }
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = params
-  const session = await getSessionProfile()
+  const { id } = await params;
+  const session = await getSessionProfile();
 
   if (!session.user || !session.orgId) {
-    return new Response('Não autorizado.', { status: 401 })
+    return new Response("Não autorizado.", { status: 401 });
   }
 
-  const supabase = await createSupabaseServerClient()
+  const readerClient = await createSupabaseServerClient();
+  const adminClient = createSupabaseServiceRoleClient();
 
-  const { data: client } = await supabase
-    .from('app_clients')
-    .select('id, member_id')
-    .eq('id', id)
-    .eq('org_id', session.orgId)
-    .maybeSingle()
+  const { data: client, error } = await readerClient
+    .from("app_clients")
+    .select("id, member_id")
+    .eq("id", id)
+    .eq("org_id", session.orgId)
+    .maybeSingle();
+
+  if (error) {
+    return new Response(`Erro ao consultar cliente: ${error.message}`, {
+      status: 500,
+    });
+  }
 
   if (!client) {
-    return new Response('Cliente não encontrado.', { status: 404 })
+    return new Response("Cliente não encontrado.", { status: 404 });
   }
 
-  // Deleta o vínculo do cliente (app_members)
   if (client.member_id) {
-    await supabase
-      .from('app_members')
+    const { error: memberError } = await adminClient
+      .from("app_members")
       .delete()
-      .eq('id', client.member_id)
-      .eq('org_id', session.orgId)
+      .eq("id", client.member_id)
+      .eq("org_id", session.orgId);
+
+    if (memberError) {
+      return new Response(`Erro ao remover membro: ${memberError.message}`, {
+        status: 500,
+      });
+    }
   }
 
-  // Limpa o campo de convite
-  await supabase
-    .from('app_clients')
+  const { error: updateError } = await adminClient
+    .from("app_clients")
     .update({ invited_email: null, member_id: null })
-    .eq('id', id)
-    .eq('org_id', session.orgId)
+    .eq("id", id)
+    .eq("org_id", session.orgId);
 
-  revalidatePath(`/clients/${id}/info`)
-  return new Response('Acesso removido.', { status: 200 })
+  if (updateError) {
+    return new Response(`Erro ao limpar convite: ${updateError.message}`, {
+      status: 500,
+    });
+  }
+
+  revalidatePath(`/clients/${id}/info`);
+  return new Response("Acesso removido.", { status: 200 });
 }

@@ -1,36 +1,41 @@
-import { createSupabaseRouteHandlerClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
+import { ZodError, z } from "zod";
+
+const schema = z.object({
+  access_token: z.string().min(10),
+  refresh_token: z.string().min(10),
+});
 
 export async function POST(req: Request) {
   try {
-    const { access_token, refresh_token } = await req.json()
-    const cookieStore = await cookies()
-    const response = NextResponse.json({ ok: true })
-    const supabase = createSupabaseRouteHandlerClient(cookieStore, response)
+    const { access_token, refresh_token } = schema.parse(await req.json());
+    const response = NextResponse.json({ ok: true });
+    const supabase = await createSupabaseRouteHandlerClient(response);
 
     const { error } = await supabase.auth.setSession({
       access_token,
       refresh_token,
-    })
+    });
 
     if (error) {
-      console.error('Erro ao sincronizar sessão:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error("Erro ao sincronizar sessão:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return response
-    if (error) {
-      console.error('Erro ao sincronizar sessão:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return response
+    return response;
   } catch (err) {
-    console.error('Erro ao sincronizar sessão:', err)
+    if (err instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Payload inválido", issues: err.issues },
+        { status: 400 },
+      );
+    }
+
+    console.error("Erro ao sincronizar sessão:", err);
     return NextResponse.json(
-      { error: 'Erro ao sincronizar sessão.' },
-      { status: 500 }
-    )
+      { error: "Erro ao sincronizar sessão." },
+      { status: 500 },
+    );
   }
 }
