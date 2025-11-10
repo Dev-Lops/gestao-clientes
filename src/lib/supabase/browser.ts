@@ -2,9 +2,8 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/config/env";
 import type { Database } from "@/types/supabase";
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/config/env";
 
 let browserClient: SupabaseClient<Database> | null = null;
 
@@ -16,17 +15,12 @@ function assertCredentials() {
 
 export function createSupabaseBrowserClient(): SupabaseClient<Database> {
   assertCredentials();
-
-  if (browserClient) {
-    return browserClient;
-  }
+  if (browserClient) return browserClient;
 
   browserClient = createBrowserClient<Database>(
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
-    {
-      cookieOptions: { sameSite: "lax" },
-    },
+    { cookieOptions: { sameSite: "lax" } },
   );
 
   return browserClient;
