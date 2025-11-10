@@ -60,12 +60,12 @@ export default function CalendarPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
-  const events =
-    useAppStore(
-      (state) =>
-        (state.tables.app_content_calendar as ContentCalendarItem[] | undefined) ??
-        EMPTY_EVENTS
-    );
+  const events = useAppStore(
+    (state) =>
+      (state.tables.app_content_calendar as
+        | ContentCalendarItem[]
+        | undefined) ?? EMPTY_EVENTS,
+  );
 
   const [loading, setLoading] = useState(() => events.length === 0);
   const [selectedDate, setSelectedDate] = useState(formatLocal(new Date()));
@@ -97,7 +97,9 @@ export default function CalendarPage() {
 
       const { data: rows, error } = await supabase
         .from("app_content_calendar")
-        .select("id, org_id, created_by, event_date, title, notes, channel, created_at")
+        .select(
+          "id, org_id, created_by, event_date, title, notes, channel, created_at",
+        )
         .eq("org_id", orgId)
         .order("event_date", { ascending: true });
 
@@ -116,7 +118,7 @@ export default function CalendarPage() {
       setTable("app_content_calendar", normalized);
       setLoading(false);
     },
-    [orgId, supabase, setTable]
+    [orgId, supabase, setTable],
   );
 
   useEffect(() => {
@@ -164,7 +166,8 @@ export default function CalendarPage() {
   }
 
   async function handleSave() {
-    if (!form.title || !form.date) return toast.error("Preencha título e data.");
+    if (!form.title || !form.date)
+      return toast.error("Preencha título e data.");
     if (!orgId || !userId) return toast.error("Sessão inválida.");
     if (!form.channel) return toast.error("Selecione um canal.");
 
@@ -178,7 +181,11 @@ export default function CalendarPage() {
     };
 
     const { data, error } = editingId
-      ? await supabase.from("app_content_calendar").update(payload).eq("id", editingId).select()
+      ? await supabase
+          .from("app_content_calendar")
+          .update(payload)
+          .eq("id", editingId)
+          .select()
       : await supabase.from("app_content_calendar").insert(payload).select();
 
     if (error) {
@@ -214,7 +221,7 @@ export default function CalendarPage() {
 
     setTable(
       "app_content_calendar",
-      events.filter((e) => e.id !== editingId)
+      events.filter((e) => e.id !== editingId),
     );
 
     toast.success("Evento removido!");
@@ -225,13 +232,20 @@ export default function CalendarPage() {
     <div className="space-y-8 p-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Conteúdo & Agenda</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Calendário editorial</h1>
+          <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+            Conteúdo & Agenda
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-900">
+            Calendário editorial
+          </h1>
           <p className="text-sm text-slate-500 max-w-xl">
-            Planeje campanhas, organize lançamentos e acompanhe tudo em tempo real.
+            Planeje campanhas, organize lançamentos e acompanhe tudo em tempo
+            real.
           </p>
         </div>
-        <Button onClick={() => openCreate(formatLocal(new Date()))}>Novo evento</Button>
+        <Button onClick={() => openCreate(formatLocal(new Date()))}>
+          Novo evento
+        </Button>
       </header>
 
       {/* 🗓️ Grade mensal */}
@@ -246,9 +260,16 @@ export default function CalendarPage() {
           <div className="mt-4 grid grid-cols-7 gap-2">
             {monthGrid.map((cell, index) => {
               if (!cell.date)
-                return <div key={`empty-${index}`} className="h-14 rounded-xl bg-slate-100" />;
+                return (
+                  <div
+                    key={`empty-${index}`}
+                    className="h-14 rounded-xl bg-slate-100"
+                  />
+                );
 
-              const hasEvents = events.some((event) => event.date === cell.date);
+              const hasEvents = events.some(
+                (event) => event.date === cell.date,
+              );
               const isSelected = selectedDate === cell.date;
 
               return (
@@ -256,14 +277,17 @@ export default function CalendarPage() {
                   key={cell.date}
                   type="button"
                   onClick={() => setSelectedDate(cell.date!)}
-                  className={`h-14 rounded-xl border text-sm transition ${isSelected
-                    ? "border-slate-900 bg-slate-900/90 text-white shadow-lg"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
-                    }`}
+                  className={`h-14 rounded-xl border text-sm transition ${
+                    isSelected
+                      ? "border-slate-900 bg-slate-900/90 text-white shadow-lg"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-400"
+                  }`}
                 >
                   <div className="flex h-full flex-col items-center justify-center gap-1">
                     <span>{Number(cell.date.slice(-2))}</span>
-                    {hasEvents && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                    {hasEvents && (
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    )}
                   </div>
                 </button>
               );
@@ -274,9 +298,13 @@ export default function CalendarPage() {
         {/* 🗒️ Lista diária */}
         <Card className="flex h-full flex-col overflow-hidden shadow-sm">
           <div className="border-b border-slate-200 p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Eventos do dia</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Eventos do dia
+            </h2>
             <p className="text-sm text-slate-500">
-              {format(parseISO(selectedDate), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+              {format(parseISO(selectedDate), "EEEE, dd 'de' MMMM", {
+                locale: ptBR,
+              })}
             </p>
           </div>
 
@@ -284,7 +312,9 @@ export default function CalendarPage() {
             {loading ? (
               <p className="text-sm text-slate-500">Carregando eventos...</p>
             ) : dailyEvents.length === 0 ? (
-              <p className="text-sm text-slate-500">Nenhum evento para este dia.</p>
+              <p className="text-sm text-slate-500">
+                Nenhum evento para este dia.
+              </p>
             ) : (
               <AnimatePresence>
                 {dailyEvents.map((event) => (
@@ -298,12 +328,18 @@ export default function CalendarPage() {
                     onClick={() => openEdit(event)}
                     className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-slate-300 hover:shadow-md"
                   >
-                    <h3 className="font-semibold text-slate-900">{event.title ?? "Sem título"}</h3>
+                    <h3 className="font-semibold text-slate-900">
+                      {event.title ?? "Sem título"}
+                    </h3>
                     {event.channel && (
-                      <p className="text-xs text-indigo-600 mt-1 capitalize">{event.channel}</p>
+                      <p className="text-xs text-indigo-600 mt-1 capitalize">
+                        {event.channel}
+                      </p>
                     )}
                     {event.notes && (
-                      <p className="mt-1 text-sm text-slate-500 line-clamp-2">{event.notes}</p>
+                      <p className="mt-1 text-sm text-slate-500 line-clamp-2">
+                        {event.notes}
+                      </p>
                     )}
                   </motion.button>
                 ))}
@@ -317,7 +353,9 @@ export default function CalendarPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md rounded-2xl p-6 bg-white shadow-xl border border-slate-200">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Editar evento" : "Novo evento"}</DialogTitle>
+            <DialogTitle>
+              {editingId ? "Editar evento" : "Novo evento"}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -330,22 +368,21 @@ export default function CalendarPage() {
                 placeholder="Ex: Postagem, reunião, entrega..."
               />
             </div>
-            
+
             <div>
               <Label>Canal</Label>
               <Select
                 value={form.channel}
                 onValueChange={(v) => setForm({ ...form, channel: v })}
               >
-                <SelectTrigger
-                  className="bg-white border border-slate-300 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
-                >
+                <SelectTrigger className="bg-white border border-slate-300 text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition">
                   <SelectValue placeholder="Selecione o canal" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border border-slate-200 shadow-md rounded-xl">
                   <SelectItem value="instagram">
                     <div className="flex items-center gap-2">
-                      <Instagram size={16} className="text-pink-600" /> Instagram
+                      <Instagram size={16} className="text-pink-600" />{" "}
+                      Instagram
                     </div>
                   </SelectItem>
                   <SelectItem value="tiktok">
@@ -360,13 +397,13 @@ export default function CalendarPage() {
                   </SelectItem>
                   <SelectItem value="campanha">
                     <div className="flex items-center gap-2">
-                      <Megaphone size={16} className="text-orange-500" /> Campanha
+                      <Megaphone size={16} className="text-orange-500" />{" "}
+                      Campanha
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
 
             <div>
               <Label>Data</Label>

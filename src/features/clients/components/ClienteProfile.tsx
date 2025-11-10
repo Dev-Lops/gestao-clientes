@@ -20,7 +20,7 @@ export function ClientProfile({ initialData }: { initialData: AppClient }) {
     {
       fallbackData: initialData,
       revalidateOnFocus: false,
-    }
+    },
   );
 
   const [open, setOpen] = useState(false);

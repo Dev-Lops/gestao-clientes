@@ -1,17 +1,30 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type { SyncedTable, TableMap } from "@/types/tables";
+import type { Database } from "@/types/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef } from "react";
+
+const REALTIME_TABLE_MAP: Record<
+  SyncedTable,
+  keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]
+> = {
+  app_clients: "app_clients",
+  app_tasks: "app_tasks",
+  app_orgs: "app_orgs",
+  app_members: "app_members",
+  app_content_calendar: "app_content_calendar",
+  org_client_stats: "org_client_stats_view",
+};
 
 /**
  * Hook genérico para sincronização em tempo real com Supabase.
  * Mantém as tabelas locais no Zustand sempre atualizadas.
  */
 export function useRealtimeSync<K extends SyncedTable>(params: {
-  table: K
-  orgId?: string | null
-  initialData?: TableMap[K][]
+  table: K;
+  orgId?: string | null;
+  initialData?: TableMap[K][];
 }) {
   const { table, orgId, initialData } = params;
 
@@ -37,13 +50,17 @@ export function useRealtimeSync<K extends SyncedTable>(params: {
     }
 
     // 🔹 Assina os eventos em tempo real do Supabase
+    const realtimeTable = REALTIME_TABLE_MAP[table];
+
     const channel = supabase
       .channel(`realtime_${table}_${orgId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table },
-        (payload: RealtimePostgresChangesPayload<TableMap[K]>) => {
-          const { eventType, new: newRow, old: oldRow } = payload;
+        { event: "*", schema: "public", table: realtimeTable },
+        (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+          const { eventType, new: newRowRaw, old: oldRowRaw } = payload;
+          const newRow = newRowRaw as TableMap[K] | null;
+          const oldRow = oldRowRaw as TableMap[K] | null;
 
           // DELETE
           if (eventType === "DELETE") {
@@ -56,7 +73,7 @@ export function useRealtimeSync<K extends SyncedTable>(params: {
           // INSERT / UPDATE
           if (newRow && "org_id" in newRow && newRow.org_id !== orgId) return;
           if (newRow && "id" in newRow && newRow.id) upsertRow(table, newRow);
-        }
+        },
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {

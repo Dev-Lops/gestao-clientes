@@ -1,33 +1,42 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+} from "@/lib/supabase/server";
+import { OWNER_EMAILS } from "@/config/env";
+import { completeUserOnboarding } from "@/services/auth/onboarding";
+import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
-  const requestUrl = new URL(request.url)
-  const origin = requestUrl.origin
-  const supabase = await createSupabaseServerClient()
+  const requestUrl = new URL(request.url);
+  const origin = requestUrl.origin;
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/auth/login?error=user_not_found`)
+    return NextResponse.redirect(`${origin}/auth/login?error=user_not_found`);
   }
 
-  // Exemplo: cria registro na primeira vez
-  const { data: existing } = await supabase
-    .from('app_members')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle()
+  const normalizedEmail = user.email?.toLowerCase() ?? "";
+  const adminClient = createSupabaseServiceRoleClient();
 
-  if (!existing) {
-    await supabase.from('app_members').insert({
-      user_id: user.id,
-      full_name: user.user_metadata?.full_name || user.email,
-      role: 'owner',
-    })
+  const { data: existingMember } = await adminClient
+    .from("app_members")
+    .select("id, org_id, role, status")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!existingMember) {
+    if (!OWNER_EMAILS.includes(normalizedEmail)) {
+      return NextResponse.redirect(
+        `${origin}/unauthorized?reason=no_membership`,
+      );
+    }
+
+    await completeUserOnboarding(supabase);
   }
 
-  return NextResponse.redirect(`${origin}/dashboard`)
+  return NextResponse.redirect(`${origin}/dashboard`);
 }

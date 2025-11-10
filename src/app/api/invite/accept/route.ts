@@ -7,7 +7,11 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 class InviteAcceptanceError extends Error {}
 
 class InviteService {
-  constructor(private readonly supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>) {}
+  constructor(
+    private readonly supabase: Awaited<
+      ReturnType<typeof createSupabaseServerClient>
+    >,
+  ) {}
 
   async acceptInvite({ userId, token }: { userId: string; token: string }) {
     console.info("Invite accepted for user", userId, "with token", token);
@@ -15,7 +19,11 @@ class InviteService {
   }
 }
 
-const redirectTo = (origin: string, path: string, query: Record<string, string> = {}) => {
+const redirectTo = (
+  origin: string,
+  path: string,
+  query: Record<string, string> = {},
+) => {
   const url = new URL(path, origin);
 
   Object.entries(query).forEach(([key, value]) => {

@@ -67,7 +67,9 @@ export default async function ClientsPage() {
       {/* 🔹 Lista de clientes */}
       {!clients.length ? (
         <Card className="p-8 text-center border border-dashed text-slate-500 bg-slate-50 space-y-2">
-          <p className="text-lg font-medium">Nenhum cliente cadastrado ainda.</p>
+          <p className="text-lg font-medium">
+            Nenhum cliente cadastrado ainda.
+          </p>
           <p className="text-slate-400 text-sm">Que tal começar agora?</p>
           <Button asChild size="sm" className="mt-4 rounded-full">
             <Link href="/clients/new">➕ Adicionar Cliente</Link>
@@ -106,7 +108,9 @@ export default async function ClientsPage() {
                     asChild
                     className="rounded-full border-slate-300 hover:bg-slate-100 hover:text-slate-900 text-slate-600 text-xs font-medium transition-all"
                   >
-                    <Link href={`/clients/${client.id}/info`}>Ver detalhes</Link>
+                    <Link href={`/clients/${client.id}/info`}>
+                      Ver detalhes
+                    </Link>
                   </Button>
                 </div>
               </div>

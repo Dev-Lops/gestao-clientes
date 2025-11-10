@@ -1,9 +1,7 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import React from "react";
-import { renderToString } from "react-dom/server";
+import { createElement } from "react";
+import { render, screen } from "@testing-library/react";
 
 test("sanity", () => {
-  const html = renderToString(React.createElement("span", null, "sanity"));
-  assert.ok(html.includes("sanity"));
+  render(createElement("span", null, "sanity"));
+  expect(screen.getByText("sanity")).toBeInTheDocument();
 });

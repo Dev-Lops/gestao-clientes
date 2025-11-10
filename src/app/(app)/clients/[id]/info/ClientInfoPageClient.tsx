@@ -1,6 +1,5 @@
 "use client";
 
-
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -16,9 +15,8 @@ import {
   FileText,
   FolderOpen,
   Settings,
-  User
+  User,
 } from "lucide-react";
-
 
 import { ClientProgressCard } from "@/features/clients/components/ClientProgressCard";
 import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBadge";
@@ -106,7 +104,10 @@ export default function ClientInfoPageClient({
 
         <div className="flex flex-wrap gap-3">
           <Link href="/clients">
-            <Button variant="outline" className="flex items-center gap-1 border-slate-300">
+            <Button
+              variant="outline"
+              className="flex items-center gap-1 border-slate-300"
+            >
               <ChevronLeft className="h-4 w-4" /> Voltar
             </Button>
           </Link>
@@ -137,14 +138,18 @@ export default function ClientInfoPageClient({
       {/* Cards principais */}
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Status</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">
+            Status
+          </p>
           <div className="mt-2">
             <ClientStatusBadge status={client.status} />
           </div>
         </Card>
 
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Responsável</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">
+            Responsável
+          </p>
           <div className="mt-2 flex items-center gap-2 text-slate-800 font-medium">
             <User className="h-4 w-4 text-indigo-600" />
             {client.account_manager || "Não definido"}
@@ -152,7 +157,9 @@ export default function ClientInfoPageClient({
         </Card>
 
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Pagamento</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">
+            Pagamento
+          </p>
           <div className="mt-2 flex items-center gap-2 text-slate-800 font-medium">
             <Coins className="h-4 w-4 text-amber-600" />
             {client.payment_status || "—"}
@@ -160,7 +167,9 @@ export default function ClientInfoPageClient({
         </Card>
 
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Próxima entrega</p>
+          <p className="text-xs text-slate-500 uppercase tracking-wide">
+            Próxima entrega
+          </p>
           <div className="mt-2 flex items-center gap-2 text-slate-800 font-medium">
             <Calendar className="h-4 w-4 text-emerald-600" />
             {client.next_delivery
@@ -189,8 +198,18 @@ export default function ClientInfoPageClient({
           <ClipboardList className="h-4 w-4 text-indigo-600" /> Histórico rápido
         </h3>
         <ul className="space-y-1 text-sm text-slate-700">
-          <li>📅 Início: {client.start_date ? new Date(client.start_date).toLocaleDateString("pt-BR") : "—"}</li>
-          <li>🕒 Última reunião: {client.last_meeting_at ? new Date(client.last_meeting_at).toLocaleDateString("pt-BR") : "—"}</li>
+          <li>
+            📅 Início:{" "}
+            {client.start_date
+              ? new Date(client.start_date).toLocaleDateString("pt-BR")
+              : "—"}
+          </li>
+          <li>
+            🕒 Última reunião:{" "}
+            {client.last_meeting_at
+              ? new Date(client.last_meeting_at).toLocaleDateString("pt-BR")
+              : "—"}
+          </li>
           <li>💸 Método de pagamento: {client.payment_method || "—"}</li>
           <li>📆 Dia de cobrança: {client.billing_day || "—"}</li>
         </ul>

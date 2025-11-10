@@ -1,94 +1,87 @@
-import { createServerClient } from '@supabase/ssr'
-import { randomUUID } from 'crypto'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { randomUUID } from "crypto";
+import { NextResponse } from "next/server";
 
-/**
- * ✅ Upload handler oficial
- * - Autentica com Supabase via cookies
- * - Salva no bucket "media"
- * - Cria registro em app_media_items
- */
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceRoleClient,
+} from "@/lib/supabase/server";
+
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-    const clientId = formData.get('clientId')?.toString()
-    const folder = formData.get('folder')?.toString() || ''
-    const subfolder = formData.get('subfolder')?.toString() || null
-    const title = formData.get('title')?.toString() || file?.name || 'sem_nome'
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const clientId = formData.get("clientId")?.toString();
+    const folder = formData.get("folder")?.toString().trim() || null;
+    const subfolder = formData.get("subfolder")?.toString().trim() || null;
+    const title =
+      formData.get("title")?.toString().trim() || file?.name || "sem_nome";
 
     if (!file || !clientId) {
-      return NextResponse.json({ error: 'Dados inválidos.' }, { status: 400 })
+      return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
     }
 
-    const cookieStore = cookies()
+    const supabase = await createSupabaseServerClient();
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: () => {}, // sem escrita aqui
-        },
-      }
-    )
-
-    // 🔹 Autenticação
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser()
+    } = await supabase.auth.getUser();
 
-    if (authError || !user)
+    if (authError || !user) {
       return NextResponse.json(
-        { error: 'Usuário não autenticado.' },
-        { status: 401 }
-      )
+        { error: "Usuário não autenticado." },
+        { status: 401 },
+      );
+    }
 
-    // 🔹 Caminho no storage
-    const path = `${clientId}/${folder}${
-      subfolder ? `/${subfolder}` : ''
-    }/${randomUUID()}-${file.name}`
+    const pathSegments = [clientId];
+    if (folder) pathSegments.push(folder);
+    if (subfolder) pathSegments.push(subfolder);
+    pathSegments.push(`${randomUUID()}-${file.name}`);
 
-    // 🔹 Upload no Storage
+    const path = pathSegments.join("/");
+
     const { error: uploadError } = await supabase.storage
-      .from('media')
-      .upload(path, file, { upsert: false })
+      .from("media")
+      .upload(path, file, { upsert: false });
 
-    if (uploadError) throw uploadError
+    if (uploadError) throw uploadError;
 
-    // 🔹 Descobre org_id via app_members
-    const { data: member } = await supabase
-      .from('app_members')
-      .select('org_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
+    const adminClient = createSupabaseServiceRoleClient();
 
-    const orgId = member?.org_id ?? null
+    const { data: member } = await adminClient
+      .from("app_members")
+      .select("org_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // 🔹 Cria registro no banco
-    const { error: insertError } = await supabase
-      .from('app_media_items')
+    if (!member?.org_id) {
+      return NextResponse.json(
+        { error: "Organização não encontrada para o usuário." },
+        { status: 403 },
+      );
+    }
+
+    const { error: insertError } = await adminClient
+      .from("app_media_items")
       .insert({
         client_id: clientId,
-        org_id: orgId,
+        org_id: member.org_id,
         folder,
         subfolder,
         title,
         file_path: path,
         created_by: user.id,
-      })
+      });
 
-    if (insertError) throw insertError
+    if (insertError) throw insertError;
 
-    return NextResponse.json({ success: true, path })
-  } catch (err: unknown) {
-    console.error('❌ Upload error:', err)
+    return NextResponse.json({ success: true, path });
+  } catch (err) {
+    console.error("❌ Upload error:", err);
     return NextResponse.json(
-      { error: 'Falha ao fazer upload.' },
-      { status: 500 }
-    )
+      { error: "Falha ao fazer upload." },
+      { status: 500 },
+    );
   }
 }

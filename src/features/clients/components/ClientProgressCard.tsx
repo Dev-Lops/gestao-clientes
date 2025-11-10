@@ -9,7 +9,10 @@ interface Props {
   title?: string;
 }
 
-export function ClientProgressCard({ value, title = "Progresso Geral" }: Props) {
+export function ClientProgressCard({
+  value,
+  title = "Progresso Geral",
+}: Props) {
   const normalized = Math.max(0, Math.min(100, value || 0));
 
   return (
