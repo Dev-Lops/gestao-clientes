@@ -1,9 +1,9 @@
 // app/(app)/clients/[id]/invite/actions.ts
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function inviteClientAction(clientId: string, email: string) {
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

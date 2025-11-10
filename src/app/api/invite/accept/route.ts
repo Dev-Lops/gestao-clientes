@@ -6,7 +6,7 @@ import {
   InviteAcceptanceError,
   InviteService,
 } from '@/lib/invite/invite.service'
-import { createClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 type QueryParams = Record<string, string>
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     return redirectTo(origin, '/login', { error: 'token' })
   }
 
-  const supabase = await createClient()
+  const supabase = await createServerSupabaseClient()
   const inviteService = new InviteService(supabase)
 
   const {

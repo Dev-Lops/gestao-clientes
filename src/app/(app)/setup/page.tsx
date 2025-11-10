@@ -2,10 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function SetupPage() {
   const [orgName, setOrgName] = useState("");
@@ -13,10 +13,7 @@ export default function SetupPage() {
   const [step, setStep] = useState<"checking" | "form" | "done">("checking");
   const router = useRouter();
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
 
   useEffect(() => {
     const check = async () => {
@@ -34,7 +31,7 @@ export default function SetupPage() {
       }
     };
     check();
-  }, [router, supabase.auth]);
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

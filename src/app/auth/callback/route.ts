@@ -1,8 +1,9 @@
 // app/auth/callback/route.ts
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const origin = requestUrl.origin
@@ -14,7 +15,8 @@ export async function GET(request: Request) {
   // Cria uma resposta que redireciona para /setup
   const response = NextResponse.redirect(`${origin}/setup`)
 
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+  const supabase = createRouteHandlerClient(cookieStore, response)
 
   // 🔹 Troca o código OAuth por uma sessão válida
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(

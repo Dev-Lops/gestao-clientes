@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/browser'
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser'
 import { SyncedTable, TableMap } from '@/types/tables'
 
 /**
@@ -9,7 +9,7 @@ export async function fetchInitialData<K extends SyncedTable>(
   table: K,
   orgId: string
 ): Promise<TableMap[K][]> {
-  const supabase = createClient()
+  const supabase = createBrowserSupabaseClient()
 
   // 👇 Corrige nomes que mudaram
   const actualTable =

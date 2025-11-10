@@ -2,7 +2,7 @@
 
 import { roleSatisfies } from "@/lib/auth/rbac";
 import { getSessionProfile } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ interface NewClientPayload {
    🔹 Server Action — Criação de cliente com tratamento aprimorado
 ---------------------------------------------------------- */
 export async function createClientAction(formData: FormData): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createServerSupabaseClient();
 
   const {
     data: { user },

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-import { createClient } from "@/lib/supabase/browser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type { ContentCalendarItem } from "@/types/tables";
 
@@ -49,7 +49,7 @@ type CalendarForm = {
 };
 
 export default function CalendarPage() {
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
   const events =
