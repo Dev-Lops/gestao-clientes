@@ -1,6 +1,7 @@
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type { SyncedTable, TableMap } from "@/types/tables";
+import type { Database } from "@/types/supabase";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { useEffect, useMemo, useRef } from "react";
 
