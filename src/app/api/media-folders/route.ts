@@ -7,13 +7,11 @@ import { NextResponse } from 'next/server'
  * - Usa o cliente Supabase no servidor (com cookies de sessão)
  * - Respeita políticas RLS automaticamente
  */
-<<<<<<< HEAD
+
 export async function GET(req: Request) {
   try {
     const supabase = await createServerSupabaseClient()
-=======
-export async function GET() {
-  const supabase = await createServerSupabaseClient()
+
 
   const { data, error } = await supabase
     .from('app_media_items')

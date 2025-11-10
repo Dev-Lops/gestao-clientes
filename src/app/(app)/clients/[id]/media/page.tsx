@@ -11,7 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-<<<<<<< HEAD
 import { createBrowserSupabaseClient as createClient } from "@/lib/supabase/client";
 
 import {
@@ -22,13 +21,6 @@ import {
   FolderPlus,
   Plus,
 } from "lucide-react";
-=======
-import { MEDIA_FOLDERS, type MediaFolder, isMediaFolder } from "@/lib/constants/media";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { cn } from "@/lib/utils";
-import { Download, FileText, FolderOpen, FolderPlus, Plus, Trash2 } from "lucide-react";
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
