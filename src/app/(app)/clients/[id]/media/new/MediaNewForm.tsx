@@ -44,6 +44,40 @@ async function uploadMediaThroughApi(
   });
 }
 
+async function uploadMediaThroughApi(
+  formData: FormData,
+  onProgress: (percent: number) => void
+) {
+  return new Promise<void>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", "/api/upload");
+    request.responseType = "json";
+
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      }
+    };
+
+    request.onload = () => {
+      if (request.status >= 200 && request.status < 300) {
+        resolve();
+        return;
+      }
+
+      const response = request.response as { error?: string } | null;
+      reject(new Error(response?.error ?? "Falha no upload."));
+    };
+
+    request.onerror = () => {
+      reject(new Error("Falha no upload."));
+    };
+
+    request.send(formData);
+  });
+}
+
 interface MediaNewFormProps {
   clientId: string;
   folder: string;
@@ -86,37 +120,14 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       if (subfolder) formData.append("subfolder", subfolder);
       formData.append("title", title || file.name);
 
-<<<<<<< HEAD
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "/api/upload");
-
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setProgress(percent);
-          }
-        };
-
-        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject());
-        xhr.onerror = () => reject(new Error("Falha no upload."));
-        xhr.send(formData);
-      });
-=======
       await uploadMediaThroughApi(formData, setProgress);
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
       toast.success("Upload concluído com sucesso!");
       router.push(`/clients/${clientId}/media?folder=${folder}${subfolder ? `&sub=${subfolder}` : ""}`);
     } catch (err) {
       console.error(err);
-<<<<<<< HEAD
-      setError("Erro ao enviar arquivo.");
-      toast.error("Erro ao enviar arquivo.");
-=======
       const message = err instanceof Error ? err.message : "Erro ao enviar arquivo.";
       toast.error(message);
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
     } finally {
       setIsUploading(false);
     }

@@ -2,25 +2,10 @@
 
 import { getSessionProfile } from '@/lib/auth/session'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-<<<<<<< HEAD
-import { revalidatePath } from 'next/cache'
-
-// 🔹 Tipo de retorno explícito (ótimo para consumo no client)
-export interface DeleteClientResponse {
-  success: boolean
-  message: string
-}
-
-export async function deleteClientAction(
-  formData: FormData
-): Promise<DeleteClientResponse> {
-  // 🔸 Inicializa cliente Supabase no servidor
-=======
 
 import { revalidatePath } from 'next/cache'
 
 export async function deleteClientAction(formData: FormData) {
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
   const supabase = await createServerSupabaseClient()
   const session = await getSessionProfile()
 

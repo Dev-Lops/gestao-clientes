@@ -11,10 +11,10 @@ export async function getSessionProfile() {
 'use server'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function getSessionProfile() {
   const supabase = await createServerSupabaseClient()
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
   const {
     data: { user },
     error: userError,
