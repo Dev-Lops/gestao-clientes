@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   }
 
   const response = NextResponse.redirect(`${origin}/setup`)
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createRouteHandlerClient(cookieStore, response)
 
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
