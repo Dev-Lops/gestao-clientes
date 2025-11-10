@@ -1,13 +1,10 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient()
-<<<<<<< HEAD
-
-=======
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
     const body = await req.json()
 
     // 🔐 Verifica usuário autenticado

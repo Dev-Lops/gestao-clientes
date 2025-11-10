@@ -1,19 +1,9 @@
 "use client";
 
-<<<<<<< HEAD
-
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-
-import {
-=======
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { motion } from "framer-motion";
 import {
   BarChart3,
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
   Calendar,
   ChevronLeft,
   ClipboardList,
@@ -23,33 +13,6 @@ import {
   FileText,
   FolderOpen,
   Settings,
-<<<<<<< HEAD
-  User
-} from "lucide-react";
-
-
-import { ClientProgressCard } from "@/components/ClientProgressCard";
-import { ClientStatusBadge } from "@/components/ClientStatusBadge";
-import { DeleteClientButton } from "@/components/DeleteClientButton";
-import { EditClientDialog } from "@/components/EditClientDialog";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import type { AppClient } from "@/types/tables";
-import { supabaseBrowser } from "@/lib/supabase/browser";
-
-export default function ClientInfoPageClient({
-  id,
-  userRole,
-}: {
-  id: string;
-  userRole: string;
-}) {
-  const supabase = supabaseBrowser;
-  const [client, setClient] = useState<AppClient | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
-
-=======
   User,
 } from "lucide-react";
 import Link from "next/link";
@@ -94,7 +57,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
 
   const canEdit = role === "owner" || role === "admin";
 
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
   const fetchClient = useCallback(async () => {
     try {
       setLoading(true);
@@ -102,17 +64,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
         .from("app_clients")
         .select("*")
         .eq("id", id)
-<<<<<<< HEAD
-        .maybeSingle();
-
-      if (error) throw error;
-      if (!data) return toast.error("Cliente não encontrado.");
-
-      setClient(data as AppClient);
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao carregar cliente.");
-=======
         .maybeSingle<Client>();
 
       if (error) throw error;
@@ -125,19 +76,12 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
     } catch (err) {
       console.error("Erro ao carregar cliente:", err);
       toast.error("Erro ao carregar informações do cliente.");
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
     } finally {
       setLoading(false);
     }
   }, [supabase, id]);
 
   useEffect(() => {
-<<<<<<< HEAD
-    fetchClient();
-  }, [fetchClient]);
-
-  const handleSuccess = () => fetchClient();
-=======
     void fetchClient();
   }, [fetchClient]);
 
@@ -160,7 +104,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
     },
     [canEdit, fetchClient, id, supabase]
   );
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
   if (loading)
     return (
@@ -186,10 +129,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
       transition={{ duration: 0.3 }}
       className="max-w-6xl mx-auto p-10 space-y-10 bg-white rounded-3xl shadow-xl border border-slate-200"
     >
-<<<<<<< HEAD
-      {/* Cabeçalho */}
-=======
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
@@ -207,17 +146,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
               <ChevronLeft className="h-4 w-4" /> Voltar
             </Button>
           </Link>
-<<<<<<< HEAD
-
-          <Button
-            onClick={() => setOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
-          >
-            <Settings className="h-4 w-4" /> Editar
-          </Button>
-
-          <Link href={`/clients/${id}/media`}>
-=======
           <Button
             onClick={() => setOpen(true)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
@@ -226,15 +154,10 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
             <Settings className="h-4 w-4" /> Editar
           </Button>
           <Link href={`/clients/${id}/files`}>
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
             <Button className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-700">
               <FolderOpen className="h-4 w-4" /> Pastas
             </Button>
           </Link>
-<<<<<<< HEAD
-
-=======
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
           <Link href={`/clients/${id}/tasks/new`}>
             <Button
               variant="outline"
@@ -246,15 +169,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
         </div>
       </header>
 
-<<<<<<< HEAD
-      {/* Cards principais */}
-      <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">Status</p>
-          <div className="mt-2">
-            <ClientStatusBadge status={client.status} />
-          </div>
-=======
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
           <p className="text-xs text-slate-500 uppercase tracking-wide">Status</p>
@@ -274,7 +188,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
           >
             {client.status || "—"}
           </Badge>
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
         </Card>
 
         <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
@@ -299,55 +212,11 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
             <Calendar className="h-4 w-4 text-emerald-600" />
             {client.next_delivery
               ? new Date(client.next_delivery).toLocaleDateString("pt-BR")
-<<<<<<< HEAD
-              : "—"}
-=======
               : "Sem data"}
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
           </div>
         </Card>
       </section>
 
-<<<<<<< HEAD
-      {/* Progresso */}
-      <ClientProgressCard value={progress} />
-
-      {/* Observações */}
-      <Card className="p-6 border border-slate-200 bg-white shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <FileText className="h-4 w-4 text-indigo-600" /> Observações internas
-        </h3>
-        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-          {client.internal_notes || "Sem observações adicionadas."}
-        </p>
-      </Card>
-
-      {/* Histórico */}
-      <Card className="p-6 border border-slate-200 bg-white shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-indigo-600" /> Histórico rápido
-        </h3>
-        <ul className="space-y-1 text-sm text-slate-700">
-          <li>📅 Início: {client.start_date ? new Date(client.start_date).toLocaleDateString("pt-BR") : "—"}</li>
-          <li>🕒 Última reunião: {client.last_meeting_at ? new Date(client.last_meeting_at).toLocaleDateString("pt-BR") : "—"}</li>
-          <li>💸 Método de pagamento: {client.payment_method || "—"}</li>
-          <li>📆 Dia de cobrança: {client.billing_day || "—"}</li>
-        </ul>
-      </Card>
-
-      {userRole === "owner" && (
-        <div className="pt-6 border-t">
-          <DeleteClientButton clientId={id} clientName={client.name} />
-        </div>
-      )}
-
-      <EditClientDialog
-        open={open}
-        setOpen={setOpen}
-        client={client}
-        onSuccess={handleSuccess}
-      />
-=======
       <section className="grid lg:grid-cols-[2fr,1fr] gap-6">
         <Card className="p-6 space-y-5 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
@@ -434,7 +303,6 @@ export function ClientInfoPageClient({ id, role }: ClientInfoPageClientProps) {
       </Card>
 
       <EditClientDialog open={open} setOpen={setOpen} client={client} onSave={handleSave} />
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
     </motion.div>
   );
 }

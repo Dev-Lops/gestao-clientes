@@ -5,14 +5,10 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 
-import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { DashboardSkeleton } from "@/components/skeletons/dashboard-skeleton";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
-<<<<<<< HEAD
-import { createBrowserSupabaseClient } from "@/lib/supabase/client"
-import { useAppStore } from "@/store/appStore"
-=======
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 >>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
@@ -48,12 +44,6 @@ export default function DashboardPage() {
 }
 
 function RealtimeDashboard() {
-<<<<<<< HEAD
-  const supabase = useMemo(() => createBrowserSupabaseClient(), [])
-  const router = useRouter()
-  const setTable = useAppStore((state) => state.setTable)
-  const orgId = useAppStore((state) => state.orgId)
-=======
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const router = useRouter();
   const setTable = useAppStore((state) => state.setTable);

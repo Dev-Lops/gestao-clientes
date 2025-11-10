@@ -25,6 +25,7 @@ import {
 =======
 import { MEDIA_FOLDERS, type MediaFolder, isMediaFolder } from "@/lib/constants/media";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { Download, FileText, FolderOpen, FolderPlus, Plus, Trash2 } from "lucide-react";
 >>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
@@ -56,14 +57,11 @@ export default function ClientMediaPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
   const clientId = params.id;
-  const folder = searchParams.get("folder") || "";
-  const subfolder = searchParams.get("sub") || "";
+  const folderParam = searchParams.get("folder");
+  const subfolderParam = searchParams.get("sub");
+  const folder: MediaFolder | "" = isMediaFolder(folderParam) ? folderParam : "";
 
-<<<<<<< HEAD
-  const supabase = createClient();
-=======
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [folders, setFolders] = useState<MediaFolder[]>([]);
@@ -270,10 +268,6 @@ export default function ClientMediaPage() {
 
 /* ------------------ Card de Mídia ------------------ */
 function MediaCard({ item }: { item: MediaItem }) {
-<<<<<<< HEAD
-  const supabase = createClient();
-  const [url, setUrl] = useState("");
-=======
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [publicUrl, setPublicUrl] = useState("");
 >>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2

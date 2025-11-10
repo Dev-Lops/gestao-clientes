@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 /**
@@ -13,41 +14,11 @@ export async function GET(req: Request) {
 =======
 export async function GET() {
   const supabase = await createServerSupabaseClient()
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
 
-    // 🔹 Obtem usuário autenticado
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'Usuário não autenticado.' },
-        { status: 401 }
-      )
-    }
-
-    // 🔹 Busca org vinculada ao usuário
-    const { data: member } = await supabase
-      .from('app_members')
-      .select('org_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    if (!member?.org_id) {
-      return NextResponse.json(
-        { error: 'Organização não encontrada.' },
-        { status: 403 }
-      )
-    }
-
-    // 🔹 Busca arquivos da organização
-    const { data, error } = await supabase
-      .from('app_media_items')
-      .select('id, folder, subfolder, title, created_at')
-      .eq('org_id', member.org_id)
-      .order('created_at', { ascending: false })
+  const { data, error } = await supabase
+    .from('app_media_items')
+    .select('id, folder, title')
+    .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Erro ao buscar mídias:', error)
