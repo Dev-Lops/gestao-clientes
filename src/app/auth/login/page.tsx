@@ -1,6 +1,6 @@
 'use client'
 
-import { createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { Loader2, LogIn } from 'lucide-react'
 import { useState } from 'react'
 
@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   async function handleLogin() {
-    const supabase = createBrowserSupabaseClient()
+    const supabase = createSupabaseBrowserClient()
     setLoading(true)
 
     const { data, error } = await supabase.auth.signInWithOAuth({

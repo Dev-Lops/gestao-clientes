@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
 import { useAppStore } from "@/store/appStore";
 import type { ContentCalendarItem } from "@/types/tables";
 
@@ -57,7 +57,7 @@ type CalendarForm = {
 };
 
 export default function CalendarPage() {
-  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const setTable = useAppStore((state) => state.setTable);
   const orgId = useAppStore((state) => state.orgId);
   const events =

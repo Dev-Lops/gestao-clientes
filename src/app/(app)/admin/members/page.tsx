@@ -1,7 +1,7 @@
 "use client";
 
 import { inviteStaffAction, updateMemberRoleAction } from "@/app/(app)/admin/members/actions";
-import { DeleteMemberButton } from "@/components/DeleteMemberButton";
+import { DeleteMemberButton } from "@/features/admin/components/DeleteMemberButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

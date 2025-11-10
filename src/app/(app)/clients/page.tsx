@@ -1,26 +1,15 @@
 // ✅ app/(app)/clients/page.tsx
-import { StatusBadge } from "@/components/status-badge";
+import { StatusBadge } from "@/features/clients/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getSessionProfile } from "@/lib/auth/session";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/services/auth/session";
+import { listClientsByOrg } from "@/services/repositories/clients";
 import { formatDate } from "@/lib/utils";
+import type { AppClient } from "@/types/tables";
 import Link from "next/link";
 
 // 🔄 Atualiza SSR a cada 1 minuto
 export const revalidate = 60;
-
-// 🔹 Tipagem completa e segura
-export type ClientStatus = "new" | "onboarding" | "active" | "paused" | "closed";
-
-export interface AppClient {
-  id: string;
-  name: string;
-  status: ClientStatus;
-  plan: string | null;
-  main_channel: string | null;
-  created_at: string;
-}
 
 export default async function ClientsPage() {
   const { user, orgId } = await getSessionProfile();
@@ -36,26 +25,18 @@ export default async function ClientsPage() {
       </Card>
     );
 
-  // 🔹 Cria cliente Supabase
-  const supabase = await createServerSupabaseClient();
+  let clients: AppClient[] = [];
 
-  const { data, error } = await supabase
-    .from("app_clients")
-    .select("id, name, status, plan, main_channel, created_at")
-    .eq("org_id", orgId)
-    .order("created_at", { ascending: false })
-    .returns<AppClient[]>(); // ✅ tipagem explícita
-
-  if (error) {
-    console.error("🚨 Erro ao carregar clientes:", error.message);
+  try {
+    clients = await listClientsByOrg(orgId);
+  } catch (error) {
+    console.error("🚨 Erro ao carregar clientes:", error);
     return (
       <Card className="p-6 text-red-600 bg-rose-50 border-rose-200 shadow-sm">
-        Erro ao carregar clientes: {error.message}
+        Erro ao carregar clientes. Tente novamente.
       </Card>
     );
   }
-
-  const clients: AppClient[] = data ?? [];
 
   return (
     <div className="space-y-10 animate-in fade-in duration-300 p-8">
@@ -114,7 +95,7 @@ export default async function ClientsPage() {
                 <p className="text-xs text-slate-400">
                   Criado em{" "}
                   <span className="font-medium text-slate-500">
-                    {formatDate(client.created_at)}
+                    {client.created_at ? formatDate(client.created_at) : "—"}
                   </span>
                 </p>
 

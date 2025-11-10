@@ -1,34 +1,25 @@
-// src/app/api/auth/set-session/route.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createRouteHandlerClient } from '@/lib/supabaseClient'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   try {
     const { access_token, refresh_token } = await req.json()
-    const cookieStore = await cookies() // ✅ precisa do await
+    const cookieStore = await cookies()
+    const response = NextResponse.json({ ok: true })
+    const supabase = createRouteHandlerClient(cookieStore, response)
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            for (const { name, value, options } of cookiesToSet) {
-              cookieStore.set(name, value, options as CookieOptions)
-            }
-          },
-        },
-      }
-    )
+    const { error } = await supabase.auth.setSession({
+      access_token,
+      refresh_token,
+    })
 
-    // ✅ grava tokens de sessão
-    await supabase.auth.setSession({ access_token, refresh_token })
+    if (error) {
+      console.error('Erro ao sincronizar sessão:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
-    return NextResponse.json({ ok: true })
+    return response
   } catch (err) {
     console.error('Erro ao sincronizar sessão:', err)
     return NextResponse.json(

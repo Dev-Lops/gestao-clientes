@@ -1,5 +1,5 @@
-import { getSessionProfile } from '@/lib/auth/session'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/services/auth/session'
+import { createServerSupabaseClient } from '@/lib/supabaseClient'
 
 export async function GET() {
   try {

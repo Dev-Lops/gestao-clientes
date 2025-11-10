@@ -1,13 +1,11 @@
 'use server'
 
-import { getSessionProfile } from '@/lib/auth/session'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-
-import { revalidatePath } from 'next/cache'
+import { getSessionProfile } from "@/services/auth/session";
+import { deleteClientById } from "@/services/repositories/clients";
+import { revalidatePath } from "next/cache";
 
 export async function deleteClientAction(formData: FormData) {
-  const supabase = await createServerSupabaseClient()
-  const session = await getSessionProfile()
+  const session = await getSessionProfile();
 
   // 🔸 Valida autenticação e permissão
   if (!session.user) {
@@ -22,27 +20,23 @@ export async function deleteClientAction(formData: FormData) {
   }
 
   // 🔸 Valida ID do cliente
-  const clientId = formData.get('client_id')
-  if (typeof clientId !== 'string' || !clientId.trim()) {
-    return { success: false, message: 'ID do cliente ausente ou inválido.' }
+  const clientId = formData.get("client_id");
+  if (typeof clientId !== "string" || !clientId.trim()) {
+    return { success: false, message: "ID do cliente ausente ou inválido." };
   }
 
-  // 🔸 Executa exclusão segura
-  const { error } = await supabase
-    .from('app_clients')
-    .delete()
-    .eq('id', clientId)
-
-  if (error) {
-    console.error('❌ Erro ao excluir cliente:', error.message)
+  try {
+    await deleteClientById(clientId);
+  } catch (error) {
+    console.error("❌ Erro ao excluir cliente:", error);
     return {
       success: false,
-      message: 'Erro ao excluir cliente. Tente novamente mais tarde.',
-    }
+      message: "Erro ao excluir cliente. Tente novamente mais tarde.",
+    };
   }
 
   // 🔸 Revalida a listagem de clientes no cache
-  revalidatePath('/clients')
+  revalidatePath("/clients");
 
-  return { success: true, message: 'Cliente excluído com sucesso.' }
+  return { success: true, message: "Cliente excluído com sucesso." };
 }

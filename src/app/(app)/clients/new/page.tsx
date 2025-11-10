@@ -1,138 +1,85 @@
-'use server';
-
-<<<<<<< HEAD
-import { getSessionProfile } from '@/lib/auth/session';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
-=======
-import { roleSatisfies } from "@/lib/auth/rbac";
-import { getSessionProfile } from "@/lib/auth/session";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { can, isOwner } from "@/services/auth/rbac";
+import { getSessionProfile } from "@/services/auth/session";
+import { createClientRecord } from "@/services/repositories/clients";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
-
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-
-import { can, isOwner } from '@/lib/auth/rbac';
 
 /* ----------------------------------------------------------
    🔹 Tipos auxiliares
 ---------------------------------------------------------- */
-interface NewClientPayload {
-  name: string;
-  plan: string;
-  main_channel: string;
-  start_date?: string | null;
-  account_manager?: string | null;
-  monthly_ticket?: number | null;
-  billing_day?: number | null;
-  payment_method?: string | null;
-  payment_status?: string | null;
-  last_meeting_at?: string | null;
-  next_delivery?: string | null;
-  progress?: number | null;
-  internal_notes?: string | null;
-}
-
 /* ----------------------------------------------------------
    🔹 Server Action — Criação de cliente com tratamento aprimorado
 ---------------------------------------------------------- */
 export async function createClientAction(formData: FormData): Promise<void> {
-  const supabase = await createServerSupabaseClient();
+  const session = await getSessionProfile();
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user)
-    throw new Error('Sessão expirada. Faça login novamente.');
-
-  const normalize = (value: FormDataEntryValue | null): string | null => {
-    return value && String(value).trim() !== '' ? String(value).trim() : null;
-  };
-
-  const toNumber = (value: FormDataEntryValue | null): number | null => {
-    return value ? Number(value) : null;
-  };
-
-  const payload: NewClientPayload = {
-    name: String(formData.get('name') ?? '').trim(),
-    plan: (formData.get('plan') as string) || 'Gestão',
-    main_channel: (formData.get('main_channel') as string) || 'Instagram',
-    start_date: normalize(formData.get('start_date')),
-    account_manager: normalize(formData.get('account_manager')),
-    monthly_ticket: toNumber(formData.get('monthly_ticket')),
-    billing_day: toNumber(formData.get('billing_day')),
-    payment_method: normalize(formData.get('payment_method')),
-    payment_status: normalize(formData.get('payment_status')),
-    last_meeting_at: normalize(formData.get('last_meeting_at')),
-    next_delivery: normalize(formData.get('next_delivery')),
-    progress: toNumber(formData.get('progress')),
-    internal_notes: normalize(formData.get('internal_notes')),
-  };
-
-  if (!payload.name || payload.name.length < 3)
-    throw new Error('Informe um nome válido para o cliente.');
-
-  // 🔹 Encontra a organização ativa do usuário
-  const { data: member } = await supabase
-    .from('app_members')
-    .select('org_id')
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  let orgId = member?.org_id ?? null;
-
-  if (!orgId) {
-    const { data: ownerOrg } = await supabase
-      .from('app_orgs')
-      .select('id')
-      .eq('owner_user_id', user.id)
-      .maybeSingle();
-
-    orgId = ownerOrg?.id ?? null;
+  if (!session.user) {
+    throw new Error("Sessão expirada. Faça login novamente.");
   }
 
-  if (!orgId)
-    throw new Error('Não foi possível identificar a organização do usuário.');
-
-  // 🔹 Inserção no Supabase
-  const { data, error } = await supabase
-    .from('app_clients')
-    .insert({
-      org_id: orgId,
-      name: payload.name,
-      plan: payload.plan,
-      status: 'Novo',
-      main_channel: payload.main_channel,
-      created_by: user.id,
-      start_date: payload.start_date,
-      account_manager: payload.account_manager,
-      monthly_ticket: payload.monthly_ticket,
-      billing_day: payload.billing_day,
-      payment_method: payload.payment_method,
-      payment_status: payload.payment_status,
-      last_meeting_at: payload.last_meeting_at,
-      next_delivery: payload.next_delivery,
-      progress: payload.progress,
-      internal_notes: payload.internal_notes,
-    })
-    .select('id')
-    .maybeSingle();
-
-  if (error) {
-    console.error('❌ Supabase insert error:', error.message, error.details);
-    throw new Error('Erro ao criar cliente. Tente novamente.');
+  if (!session.orgId) {
+    throw new Error("Não foi possível identificar a organização do usuário.");
   }
 
-  console.log('✅ Cliente criado com sucesso:', data);
-  redirect(`/clients/${data?.id}/info`);
+  const getValue = (key: string) => {
+    const value = formData.get(key);
+    return typeof value === "string" ? value : "";
+  };
+
+  const parsed = {
+    name: getValue("name"),
+    plan: getValue("plan") || "Gestão",
+    main_channel: getValue("main_channel") || "Instagram",
+    start_date: getValue("start_date"),
+    account_manager: getValue("account_manager"),
+    monthly_ticket: getValue("monthly_ticket"),
+    billing_day: getValue("billing_day"),
+    payment_method: getValue("payment_method"),
+    payment_status: getValue("payment_status"),
+    last_meeting_at: getValue("last_meeting_at"),
+    next_delivery: getValue("next_delivery"),
+    progress: getValue("progress"),
+    internal_notes: getValue("internal_notes"),
+  };
+
+  if (parsed.name.trim().length < 3) {
+    throw new Error("Informe um nome válido para o cliente.");
+  }
+
+  const normalizeString = (value?: string) =>
+    value && value.trim().length > 0 ? value.trim() : null;
+
+  const toNumber = (value?: string) => {
+    if (!value || value.trim() === "") return null;
+    const numeric = Number(value);
+    return Number.isNaN(numeric) ? null : numeric;
+  };
+
+  const client = await createClientRecord({
+    orgId: session.orgId,
+    createdBy: session.user.id,
+    name: parsed.name,
+    plan: parsed.plan,
+    mainChannel: parsed.main_channel,
+    accountManager: normalizeString(parsed.account_manager),
+    paymentStatus: normalizeString(parsed.payment_status),
+    paymentMethod: normalizeString(parsed.payment_method),
+    monthlyTicket: toNumber(parsed.monthly_ticket),
+    billingDay: toNumber(parsed.billing_day),
+    startDate: normalizeString(parsed.start_date),
+    nextDelivery: normalizeString(parsed.next_delivery),
+    lastMeetingAt: normalizeString(parsed.last_meeting_at),
+    progress: toNumber(parsed.progress),
+    internalNotes: normalizeString(parsed.internal_notes),
+  });
+
+  revalidatePath("/clients");
+  redirect(`/clients/${client.id}/info`);
 }
 
 /* ----------------------------------------------------------

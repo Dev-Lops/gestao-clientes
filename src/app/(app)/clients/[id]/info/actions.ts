@@ -1,7 +1,7 @@
 'use server'
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getSessionProfile } from '@/lib/auth/session'
+import { createServerSupabaseClient } from '@/lib/supabaseClient'
+import { getSessionProfile } from '@/services/auth/session'
 import type { ActionResponse } from '@/types/actions'
 import type { AppClient } from '@/types/client'
 

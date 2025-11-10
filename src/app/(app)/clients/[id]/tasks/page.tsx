@@ -1,11 +1,12 @@
 // ✅ app/(app)/clients/[id]/tasks/page.tsx
 
-import { DeleteTaskButton } from "@/components/DeleteTaskButton";
+import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getSessionProfile } from "@/lib/auth/session";
 import { cn } from "@/lib/utils";
+import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 import { createTask, toggleTask } from "./actions";
 
@@ -35,11 +36,13 @@ type ProgressSummary = {
 export default async function TasksPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id: clientId } = await params;
-  const { supabase, user } = await getSessionProfile();
+  const { id: clientId } = params;
+  const { user } = await getSessionProfile();
   if (!user) redirect("/login");
+
+  const supabase = await createSupabaseServerClient();
 
   const { data: client } = await supabase
     .from("app_clients")
@@ -149,7 +152,7 @@ export default async function TasksPage({
 
       {/* Lista de tarefas */}
       <div className="space-y-2">
-        {(tasks ?? []).map((t) => {
+        {(tasks ?? []).map((t: Task) => {
           const isLate =
             t.status === "Atrasada" ||
             (t.due_date &&
