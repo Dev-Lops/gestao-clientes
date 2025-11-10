@@ -7,7 +7,7 @@ export type SessionMemberSnapshot = {
 
 export function resolveSessionContext(
   member: SessionMemberSnapshot | null,
-  ownerOrgId: string | null
+  ownerOrgId: string | null,
 ): { orgId: string | null; role: AppRole } {
   if (member) {
     return {

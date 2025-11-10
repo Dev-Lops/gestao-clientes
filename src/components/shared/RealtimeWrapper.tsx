@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { AppRealtimeProvider } from "@/components/shared/providers/AppRealtimeProvider";
 

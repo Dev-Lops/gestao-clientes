@@ -39,7 +39,7 @@ export function AppRealtimeProvider({
         TABLES.map(async (table) => {
           const data = await fetchInitialData(table, orgId);
           return [table, data] as const;
-        })
+        }),
       );
 
       setInitialData(Object.fromEntries(results) as Partial<TableDataMap>);

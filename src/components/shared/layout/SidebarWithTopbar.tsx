@@ -31,10 +31,20 @@ type Props = {
 
 // Links e rótulos
 const NAV_LINKS: NavLink[] = [
-  { href: "/dashboard", label: "Visão geral", icon: LayoutDashboard, minRole: "client" },
+  {
+    href: "/dashboard",
+    label: "Visão geral",
+    icon: LayoutDashboard,
+    minRole: "client",
+  },
   { href: "/calendar", label: "Calendário", icon: Calendar, minRole: "client" },
   { href: "/clients", label: "Clientes", icon: Users, minRole: "staff" },
-  { href: "/admin/members", label: "Administração", icon: ShieldCheck, minRole: "owner" },
+  {
+    href: "/admin/members",
+    label: "Administração",
+    icon: ShieldCheck,
+    minRole: "owner",
+  },
 ];
 
 const ROLE_LABEL: Record<AppRole, string> = {
@@ -46,7 +56,11 @@ const ROLE_LABEL: Record<AppRole, string> = {
 
 // -----------------------------------------------------
 
-export function SidebarWithTopbar({ children, userName = "Usuário", role = "guest" }: Props) {
+export function SidebarWithTopbar({
+  children,
+  userName = "Usuário",
+  role = "guest",
+}: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -64,7 +78,7 @@ export function SidebarWithTopbar({ children, userName = "Usuário", role = "gue
   // Links filtrados pelo papel
   const availableLinks = useMemo(
     () => NAV_LINKS.filter((link) => can(role, link.minRole)),
-    [role]
+    [role],
   );
 
   // -----------------------------------------------------
@@ -75,7 +89,7 @@ export function SidebarWithTopbar({ children, userName = "Usuário", role = "gue
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 w-72 flex-col border-r border-slate-200 bg-white/80 backdrop-blur-xl transition-transform lg:translate-x-0 lg:flex",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* Logo */}
@@ -108,7 +122,7 @@ export function SidebarWithTopbar({ children, userName = "Usuário", role = "gue
                   "flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
                   active
                     ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10"
-                    : "text-slate-500 hover:bg-slate-100/70 hover:text-slate-900"
+                    : "text-slate-500 hover:bg-slate-100/70 hover:text-slate-900",
                 )}
                 onClick={() => setSidebarOpen(false)}
               >
@@ -160,7 +174,7 @@ export function SidebarWithTopbar({ children, userName = "Usuário", role = "gue
               "inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
               role === "guest"
                 ? "bg-slate-300 text-slate-700"
-                : "bg-slate-900 text-white"
+                : "bg-slate-900 text-white",
             )}
           >
             {ROLE_LABEL[role]}

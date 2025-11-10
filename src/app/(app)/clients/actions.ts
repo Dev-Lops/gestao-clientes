@@ -1,4 +1,4 @@
-'use server'
+"use server";
 
 import { getSessionProfile } from "@/services/auth/session";
 import { deleteClientById } from "@/services/repositories/clients";
@@ -9,14 +9,14 @@ export async function deleteClientAction(formData: FormData) {
 
   // 🔸 Valida autenticação e permissão
   if (!session.user) {
-    return { success: false, message: 'Usuário não autenticado.' }
+    return { success: false, message: "Usuário não autenticado." };
   }
 
-  if (session.role !== 'owner' || !session.orgId) {
+  if (session.role !== "owner" || !session.orgId) {
     return {
       success: false,
-      message: 'Apenas o proprietário pode excluir clientes.',
-    }
+      message: "Apenas o proprietário pode excluir clientes.",
+    };
   }
 
   // 🔸 Valida ID do cliente

@@ -32,14 +32,14 @@ type MediaItem = {
   file_path: string | null;
   folder: string | null;
   subfolder: string | null;
-  created_at: string;
+  created_at: string | null;
 };
 
 type MediaFolder = {
   id: string;
   name: string;
   parent_folder: string | null;
-  created_at: string;
+  created_at: string | null;
   client_id: string;
 };
 
@@ -105,7 +105,10 @@ export default function ClientMediaPage() {
           return query;
         })();
 
-        const [mediaResult, folderResult] = await Promise.all([mediaQuery, folderQuery]);
+        const [mediaResult, folderResult] = await Promise.all([
+          mediaQuery,
+          folderQuery,
+        ]);
 
         if (mediaResult.error) {
           throw mediaResult.error;
@@ -187,7 +190,9 @@ export default function ClientMediaPage() {
       setFolders((previous) => (data ? [...previous, data] : previous));
     } catch (error) {
       console.error("Erro ao criar pasta:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao criar pasta.");
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao criar pasta.",
+      );
     }
   }
 
@@ -213,7 +218,9 @@ export default function ClientMediaPage() {
             <FolderOpen className="h-7 w-7 text-indigo-600" />
             Biblioteca de Mídias
           </h1>
-          <p className="mt-1 text-sm text-slate-500">Gerencie imagens, vídeos e arquivos de cada cliente.</p>
+          <p className="mt-1 text-sm text-slate-500">
+            Gerencie imagens, vídeos e arquivos de cada cliente.
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -224,8 +231,13 @@ export default function ClientMediaPage() {
           >
             <FolderPlus className="h-4 w-4" /> Nova Pasta
           </Button>
-          <Button asChild className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700">
-            <Link href={`/clients/${clientId}/media/new?${newMediaParams.toString()}`}>
+          <Button
+            asChild
+            className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+          >
+            <Link
+              href={`/clients/${clientId}/media/new?${newMediaParams.toString()}`}
+            >
               <Plus className="h-4 w-4" /> Nova Mídia
             </Link>
           </Button>
@@ -245,7 +257,10 @@ export default function ClientMediaPage() {
             }
 
             return (
-              <Link key={folderRow.id} href={`/clients/${clientId}/media?${params.toString()}`}>
+              <Link
+                key={folderRow.id}
+                href={`/clients/${clientId}/media?${params.toString()}`}
+              >
                 <Button
                   variant="outline"
                   className="rounded-xl border-slate-200 bg-white text-sm hover:bg-slate-50"
@@ -259,7 +274,9 @@ export default function ClientMediaPage() {
       )}
 
       {items.length === 0 ? (
-        <Card className="p-10 text-center text-slate-500">Nenhum arquivo encontrado nesta pasta.</Card>
+        <Card className="p-10 text-center text-slate-500">
+          Nenhum arquivo encontrado nesta pasta.
+        </Card>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
@@ -281,7 +298,10 @@ export default function ClientMediaPage() {
               required
             />
             <DialogFooter>
-              <Button type="submit" className="bg-indigo-600 text-white hover:bg-indigo-700">
+              <Button
+                type="submit"
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+              >
                 Criar
               </Button>
             </DialogFooter>
@@ -320,7 +340,9 @@ function MediaCard({ item }: { item: MediaItem }) {
           setUrl(data?.signedUrl ?? "");
         }
       } catch {
-        const { data } = supabase.storage.from("media").getPublicUrl(item.file_path);
+        const { data } = supabase.storage
+          .from("media")
+          .getPublicUrl(item.file_path);
         if (!cancelled) {
           setUrl(data.publicUrl ?? "");
         }
@@ -378,7 +400,9 @@ function MediaCard({ item }: { item: MediaItem }) {
               <Download className="h-4 w-4" />
             </a>
           </Button>
-          {item.file_path ? <DeleteMediaButton itemId={item.id} filePath={item.file_path} /> : null}
+          {item.file_path ? (
+            <DeleteMediaButton itemId={item.id} filePath={item.file_path} />
+          ) : null}
         </div>
       </div>
     </Card>

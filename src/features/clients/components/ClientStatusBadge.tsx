@@ -4,7 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import type { ClientStatus } from "@/types/client";
 import { getStatusLabel } from "@/lib/utils/status";
 
-export function ClientStatusBadge({ status }: { status?: ClientStatus }) {
+export function ClientStatusBadge({
+  status,
+}: {
+  status?: ClientStatus | null;
+}) {
   const label = getStatusLabel(status);
 
   const colorClass =
@@ -19,7 +23,9 @@ export function ClientStatusBadge({ status }: { status?: ClientStatus }) {
             : "bg-slate-100 text-slate-700 border border-slate-200";
 
   return (
-    <Badge className={`${colorClass} text-xs px-2 py-1 rounded-full capitalize`}>
+    <Badge
+      className={`${colorClass} text-xs px-2 py-1 rounded-full capitalize`}
+    >
       {label}
     </Badge>
   );

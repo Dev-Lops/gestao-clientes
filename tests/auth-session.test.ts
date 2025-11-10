@@ -1,19 +1,26 @@
-import test from "node:test";
-import assert from "node:assert/strict";
+import { resolveSessionContext } from "@/services/auth/session-utils";
 
-import { resolveSessionContext } from "../src/services/auth/session-utils";
+describe("resolveSessionContext", () => {
+  it("returns guest when no member or owner org", () => {
+    expect(resolveSessionContext(null, null)).toEqual({
+      orgId: null,
+      role: "guest",
+    });
+  });
 
-test("resolveSessionContext returns guest when no member or owner org", () => {
-  const context = resolveSessionContext(null, null);
-  assert.deepEqual(context, { orgId: null, role: "guest" });
-});
+  it("honors owner org when available", () => {
+    expect(resolveSessionContext(null, "org-123")).toEqual({
+      orgId: "org-123",
+      role: "owner",
+    });
+  });
 
-test("resolveSessionContext honors owner org when available", () => {
-  const context = resolveSessionContext(null, "org-123");
-  assert.deepEqual(context, { orgId: "org-123", role: "owner" });
-});
-
-test("resolveSessionContext prefers member role over owner fallback", () => {
-  const context = resolveSessionContext({ org_id: "org-999", role: "staff" }, "org-123");
-  assert.deepEqual(context, { orgId: "org-999", role: "staff" });
+  it("prefers member role over owner fallback", () => {
+    expect(
+      resolveSessionContext({ org_id: "org-999", role: "staff" }, "org-123"),
+    ).toEqual({
+      orgId: "org-999",
+      role: "staff",
+    });
+  });
 });

@@ -1,116 +1,89 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/services/auth/session";
+import { z } from "zod";
 
-/**
- * ✅ Criação de cliente com logs completos de debug
- * Mostra no console cada etapa do processo
- */
+import type { AppClient } from "@/types/tables";
+import { NextResponse } from "next/server";
+
+const schema = z.object({
+  name: z.string().min(3),
+  status: z
+    .enum(["new", "onboarding", "active", "paused", "closed"])
+    .optional(),
+  plan: z.string().nullable().optional(),
+  main_channel: z.string().nullable().optional(),
+  account_manager: z.string().nullable().optional(),
+  payment_status: z.string().nullable().optional(),
+  payment_method: z.string().nullable().optional(),
+});
+
 export async function POST(req: Request) {
-  console.log('🟢 [API] Recebendo requisição POST /api/clients/create')
+  const session = await getSessionProfile();
+
+  if (!session.user) {
+    return NextResponse.json(
+      { ok: false, message: "Usuário não autenticado." },
+      { status: 401 },
+    );
+  }
+
+  if (!session.orgId) {
+    return NextResponse.json(
+      { ok: false, message: "Organização não vinculada ao usuário." },
+      { status: 400 },
+    );
+  }
 
   try {
-    const body = await req.json()
-    console.log('📦 Body recebido:', body)
+    const payload = schema.parse(await req.json());
+    const adminClient = createSupabaseServiceRoleClient();
+    const status: AppClient["status"] = payload.status ?? "new";
 
-    const supabase = await createSupabaseServerClient()
-    console.log('🔗 Supabase client criado')
-
-    // 🔐 Recupera usuário logado
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error('❌ Erro ao buscar usuário:', userError)
-      return NextResponse.json(
-        { ok: false, message: userError.message },
-        { status: 401 }
-      )
-    }
-
-    if (!user) {
-      console.warn('⚠️ Nenhum usuário autenticado')
-      return NextResponse.json(
-        { ok: false, message: 'Usuário não autenticado.' },
-        { status: 401 }
-      )
-    }
-
-    console.log('👤 Usuário autenticado:', user.id)
-
-    // ⚙️ Pega o org_id salvo em user_metadata (deve ter vindo do login)
-    const orgId = user.user_metadata?.org_id
-    console.log('🏢 Org ID:', orgId)
-
-    if (!orgId) {
-      console.error('❌ Nenhuma organização vinculada ao usuário.')
-      return NextResponse.json(
-        { ok: false, message: 'Organização não vinculada ao usuário.' },
-        { status: 400 }
-      )
-    }
-
-    // 🧠 Validação de campos obrigatórios
-    if (!body.name || body.name.trim().length < 3) {
-      console.warn('⚠️ Nome inválido ou ausente:', body.name)
-      return NextResponse.json(
-        { ok: false, message: 'Informe um nome válido para o cliente.' },
-        { status: 400 }
-      )
-    }
-
-    // 🧾 Dados a inserir
-    const insertData = {
-      org_id: orgId,
-      name: body.name.trim(),
-      status: body.status ?? 'new',
-      plan: body.plan ?? null,
-      main_channel: body.main_channel ?? null,
-      account_manager: body.account_manager ?? null,
-      payment_status: body.payment_status ?? null,
-      created_by: user.id,
-    }
-
-    console.log('📤 Tentando inserir cliente:', insertData)
-
-    const { data, error } = await supabase
-      .from('app_clients')
-      .insert([insertData])
-      .select()
-      .single()
+    const { data, error } = await adminClient
+      .from("app_clients")
+      .insert({
+        org_id: session.orgId,
+        name: payload.name.trim(),
+        status,
+        plan: payload.plan ?? null,
+        main_channel: payload.main_channel ?? null,
+        account_manager: payload.account_manager ?? null,
+        payment_status: payload.payment_status ?? null,
+        payment_method: payload.payment_method ?? null,
+        created_by: session.user.id,
+      })
+      .select("id")
+      .single();
 
     if (error) {
-      console.error(
-        '❌ Supabase erro ao inserir:',
-        error.message,
-        error.details || ''
-      )
       return NextResponse.json(
         { ok: false, message: error.message },
-        { status: 500 }
-      )
+        { status: 500 },
+      );
     }
 
-    console.log('✅ Cliente criado com sucesso:', data)
-
     return NextResponse.json(
-      { ok: true, message: 'Cliente criado com sucesso!', client: data },
-      { status: 201 }
-    )
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      console.error('🚨 Erro inesperado no servidor:', err.message)
+      { ok: true, message: "Cliente criado com sucesso!", client: data },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { ok: false, message: err.message },
-        { status: 500 }
-      )
+        { ok: false, message: "Dados inválidos", issues: error.issues },
+        { status: 400 },
+      );
     }
 
-    console.error('🚨 Erro desconhecido no servidor:', err)
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { ok: false, message: error.message },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json(
-      { ok: false, message: 'Erro desconhecido ao criar cliente.' },
-      { status: 500 }
-    )
+      { ok: false, message: "Erro desconhecido ao criar cliente." },
+      { status: 500 },
+    );
   }
 }

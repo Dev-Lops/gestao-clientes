@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 async function uploadMediaThroughApi(
   formData: FormData,
-  onProgress: (percent: number) => void
+  onProgress: (percent: number) => void,
 ) {
   return new Promise<void>((resolve, reject) => {
     const request = new XMLHttpRequest();
@@ -50,7 +50,11 @@ interface MediaNewFormProps {
   subfolder?: string;
 }
 
-export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFormProps) {
+export default function MediaNewForm({
+  clientId,
+  folder,
+  subfolder,
+}: MediaNewFormProps) {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -95,7 +99,8 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       router.push(`/clients/${clientId}/media?${params.toString()}`);
     } catch (err) {
       console.error(err);
-      const message = err instanceof Error ? err.message : "Erro ao enviar arquivo.";
+      const message =
+        err instanceof Error ? err.message : "Erro ao enviar arquivo.";
       setError(message);
       toast.error(message);
     } finally {
@@ -133,7 +138,9 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
 
         {previewUrl && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-sm font-medium text-slate-700 mb-2">Pré-visualização</p>
+            <p className="text-sm font-medium text-slate-700 mb-2">
+              Pré-visualização
+            </p>
             {file?.type.startsWith("image/") ? (
               <Image
                 src={previewUrl}
@@ -143,10 +150,15 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
                 className="rounded-md object-cover"
               />
             ) : file?.type.startsWith("video/") ? (
-              <video src={previewUrl} controls className="rounded-md w-full h-48 object-cover" />
+              <video
+                src={previewUrl}
+                controls
+                className="rounded-md w-full h-48 object-cover"
+              />
             ) : (
               <div className="flex items-center gap-2 text-slate-600">
-                <FileText className="h-6 w-6" /> <span className="truncate">{file?.name}</span>
+                <FileText className="h-6 w-6" />{" "}
+                <span className="truncate">{file?.name}</span>
               </div>
             )}
           </div>
@@ -154,7 +166,10 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
 
         {isUploading && (
           <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} />
+            <div
+              className="h-full bg-indigo-600 transition-all"
+              style={{ width: `${progress}%` }}
+            />
           </div>
         )}
 
@@ -170,8 +185,11 @@ export default function MediaNewForm({ clientId, folder, subfolder }: MediaNewFo
       </form>
 
       <p className="text-xs text-slate-500 text-center mt-2">
-        O arquivo será salvo em: <span className="text-indigo-600 font-medium">{folder}</span>
-        {subfolder ? <span className="text-indigo-600 font-medium">{` / ${subfolder}`}</span> : null}
+        O arquivo será salvo em:{" "}
+        <span className="text-indigo-600 font-medium">{folder}</span>
+        {subfolder ? (
+          <span className="text-indigo-600 font-medium">{` / ${subfolder}`}</span>
+        ) : null}
       </p>
     </Card>
   );

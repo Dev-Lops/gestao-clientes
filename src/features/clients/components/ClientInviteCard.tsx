@@ -53,11 +53,17 @@ export function ClientInviteCard({
           </p>
         </div>
         {alreadyInvited ? (
-          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs uppercase tracking-wide">
+          <Badge
+            variant="secondary"
+            className="rounded-full px-3 py-1 text-xs uppercase tracking-wide"
+          >
             Ativo
           </Badge>
         ) : (
-          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs uppercase tracking-wide">
+          <Badge
+            variant="outline"
+            className="rounded-full px-3 py-1 text-xs uppercase tracking-wide"
+          >
             Sem acesso
           </Badge>
         )}
@@ -70,7 +76,9 @@ export function ClientInviteCard({
             <strong>{invitedEmail ?? "e-mail não informado"}</strong>.
             <br />
             {clientName && (
-              <>Acesso vinculado a <strong>{clientName}</strong>.</>
+              <>
+                Acesso vinculado a <strong>{clientName}</strong>.
+              </>
             )}
           </div>
 
@@ -86,7 +94,8 @@ export function ClientInviteCard({
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-slate-500">
-            Nenhum cliente vinculado ainda. Envie um convite para liberar o acesso.
+            Nenhum cliente vinculado ainda. Envie um convite para liberar o
+            acesso.
           </p>
           <Link href={`/clients/${clientId}/invite`}>
             <Button className="w-full">Convidar cliente</Button>

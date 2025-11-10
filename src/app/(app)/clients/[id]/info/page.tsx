@@ -4,11 +4,11 @@ import { redirect } from "next/navigation";
 import ClientInfoPageClient from "./ClientInfoPageClient";
 
 interface ClientInfoPageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export default async function ClientInfoPage({ params }: ClientInfoPageProps) {
-  const { id } = params;
+  const { id } = await params;
   const { user, orgId, role } = await getSessionProfile();
 
   if (!user) {

@@ -12,7 +12,10 @@ interface DeleteMediaButtonProps {
   filePath: string;
 }
 
-export function DeleteMediaButton({ itemId, filePath }: DeleteMediaButtonProps) {
+export function DeleteMediaButton({
+  itemId,
+  filePath,
+}: DeleteMediaButtonProps) {
   const supabase = createSupabaseBrowserClient();
   const [loading, setLoading] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -20,7 +23,9 @@ export function DeleteMediaButton({ itemId, filePath }: DeleteMediaButtonProps) 
   // ✅ Checa se o usuário logado é owner (sem cookies do servidor)
   useEffect(() => {
     async function fetchRole() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data: member } = await supabase
@@ -36,7 +41,9 @@ export function DeleteMediaButton({ itemId, filePath }: DeleteMediaButtonProps) 
   }, [supabase]);
 
   const handleDelete = useCallback(async () => {
-    const confirm = window.confirm("Tem certeza que deseja excluir este arquivo?");
+    const confirm = window.confirm(
+      "Tem certeza que deseja excluir este arquivo?",
+    );
     if (!confirm) return;
 
     if (!isOwner) {
@@ -47,8 +54,7 @@ export function DeleteMediaButton({ itemId, filePath }: DeleteMediaButtonProps) 
     setLoading(true);
     try {
       // Excluir do Storage
-      const { error: storageErr } = await supabase
-        .storage
+      const { error: storageErr } = await supabase.storage
         .from("media")
         .remove([filePath]);
 

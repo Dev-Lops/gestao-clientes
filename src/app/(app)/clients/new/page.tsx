@@ -5,9 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { can, isOwner } from "@/services/auth/rbac";
 import { getSessionProfile } from "@/services/auth/session";
-import { createClientRecord } from "@/services/repositories/clients";
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
+import { createClientAction } from "./actions";
 
 /* ----------------------------------------------------------
    🔹 Tipos auxiliares
@@ -15,82 +15,15 @@ import { redirect } from "next/navigation";
 /* ----------------------------------------------------------
    🔹 Server Action — Criação de cliente com tratamento aprimorado
 ---------------------------------------------------------- */
-export async function createClientAction(formData: FormData): Promise<void> {
-  const session = await getSessionProfile();
-
-  if (!session.user) {
-    throw new Error("Sessão expirada. Faça login novamente.");
-  }
-
-  if (!session.orgId) {
-    throw new Error("Não foi possível identificar a organização do usuário.");
-  }
-
-  const getValue = (key: string) => {
-    const value = formData.get(key);
-    return typeof value === "string" ? value : "";
-  };
-
-  const parsed = {
-    name: getValue("name"),
-    plan: getValue("plan") || "Gestão",
-    main_channel: getValue("main_channel") || "Instagram",
-    start_date: getValue("start_date"),
-    account_manager: getValue("account_manager"),
-    monthly_ticket: getValue("monthly_ticket"),
-    billing_day: getValue("billing_day"),
-    payment_method: getValue("payment_method"),
-    payment_status: getValue("payment_status"),
-    last_meeting_at: getValue("last_meeting_at"),
-    next_delivery: getValue("next_delivery"),
-    progress: getValue("progress"),
-    internal_notes: getValue("internal_notes"),
-  };
-
-  if (parsed.name.trim().length < 3) {
-    throw new Error("Informe um nome válido para o cliente.");
-  }
-
-  const normalizeString = (value?: string) =>
-    value && value.trim().length > 0 ? value.trim() : null;
-
-  const toNumber = (value?: string) => {
-    if (!value || value.trim() === "") return null;
-    const numeric = Number(value);
-    return Number.isNaN(numeric) ? null : numeric;
-  };
-
-  const client = await createClientRecord({
-    orgId: session.orgId,
-    createdBy: session.user.id,
-    name: parsed.name,
-    plan: parsed.plan,
-    mainChannel: parsed.main_channel,
-    accountManager: normalizeString(parsed.account_manager),
-    paymentStatus: normalizeString(parsed.payment_status),
-    paymentMethod: normalizeString(parsed.payment_method),
-    monthlyTicket: toNumber(parsed.monthly_ticket),
-    billingDay: toNumber(parsed.billing_day),
-    startDate: normalizeString(parsed.start_date),
-    nextDelivery: normalizeString(parsed.next_delivery),
-    lastMeetingAt: normalizeString(parsed.last_meeting_at),
-    progress: toNumber(parsed.progress),
-    internalNotes: normalizeString(parsed.internal_notes),
-  });
-
-  revalidatePath("/clients");
-  redirect(`/clients/${client.id}/info`);
-}
-
 /* ----------------------------------------------------------
    🔹 Página — Formulário de criação com UX refinada
 ---------------------------------------------------------- */
 export default async function NewClientPage() {
   const session = await getSessionProfile();
 
-  if (!session.user) redirect('/login');
-  if (!can(session.role as 'client' | 'staff' | 'owner', 'staff')) {
-    redirect('/unauthorized?from=/clients/new');
+  if (!session.user) redirect("/login");
+  if (!can(session.role as "client" | "staff" | "owner", "staff")) {
+    redirect("/unauthorized?from=/clients/new");
   }
 
   const isOwnerRole = isOwner(session.role);
@@ -130,7 +63,7 @@ export default async function NewClientPage() {
               <div>
                 <Label htmlFor="plan">Plano</Label>
                 <select
-                  title='plan'
+                  title="plan"
                   id="plan"
                   name="plan"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
@@ -144,7 +77,7 @@ export default async function NewClientPage() {
               <div>
                 <Label htmlFor="main_channel">Canal principal</Label>
                 <select
-                  title='main'
+                  title="main"
                   id="main_channel"
                   name="main_channel"
                   className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm focus:ring-2 focus:ring-indigo-400 focus:outline-none"
@@ -184,7 +117,11 @@ export default async function NewClientPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="last_meeting_at">Última reunião</Label>
-                <Input type="date" id="last_meeting_at" name="last_meeting_at" />
+                <Input
+                  type="date"
+                  id="last_meeting_at"
+                  name="last_meeting_at"
+                />
               </div>
 
               <div>
