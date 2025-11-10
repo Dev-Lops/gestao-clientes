@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createRouteHandlerClient } from '@/lib/supabaseClient'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(`${origin}/setup`)
   const cookieStore = await cookies()
-  const supabase = createRouteHandlerClient(cookieStore, response)
+  const supabase = createSupabaseRouteHandlerClient(cookieStore, response)
 
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
   if (exchangeError) {

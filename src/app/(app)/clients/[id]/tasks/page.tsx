@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 import { createTask, toggleTask } from "./actions";

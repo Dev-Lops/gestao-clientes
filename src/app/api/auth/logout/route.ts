@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from '@/lib/supabaseClient'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -10,7 +10,7 @@ export async function POST() {
   )
 
   const response = NextResponse.redirect(redirectUrl)
-  const supabase = createRouteHandlerClient(cookieStore, response)
+  const supabase = createSupabaseRouteHandlerClient(cookieStore, response)
 
   const { error } = await supabase.auth.signOut()
 

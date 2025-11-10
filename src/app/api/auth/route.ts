@@ -1,10 +1,10 @@
-import { createServerSupabaseClient } from '@/lib/supabaseClient'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
   const origin = requestUrl.origin
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createSupabaseServerClient()
 
   const {
     data: { user },

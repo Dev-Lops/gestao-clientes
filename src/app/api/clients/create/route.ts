@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabaseClient'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 /**
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     const body = await req.json()
     console.log('📦 Body recebido:', body)
 
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createSupabaseServerClient()
     console.log('🔗 Supabase client criado')
 
     // 🔐 Recupera usuário logado

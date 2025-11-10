@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from '@/lib/supabaseClient'
+import { createSupabaseRouteHandlerClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -9,7 +9,7 @@ export async function POST() {
       { message: 'Sessão encerrada com sucesso.' },
       { status: 200 }
     )
-    const supabase = createRouteHandlerClient(cookieStore, response)
+    const supabase = createSupabaseRouteHandlerClient(cookieStore, response)
     const { error } = await supabase.auth.signOut()
 
     if (error) {

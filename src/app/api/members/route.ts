@@ -1,9 +1,9 @@
 import { getSessionProfile } from '@/services/auth/session'
-import { createServerSupabaseClient } from '@/lib/supabaseClient'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
-    const supabase = await createServerSupabaseClient()
+    const supabase = await createSupabaseServerClient()
     const { orgId } = await getSessionProfile()
 
     if (!orgId) {

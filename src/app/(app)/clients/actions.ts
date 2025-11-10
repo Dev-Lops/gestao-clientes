@@ -12,7 +12,7 @@ export async function deleteClientAction(formData: FormData) {
     return { success: false, message: 'Usuário não autenticado.' }
   }
 
-  if (session.role !== 'owner') {
+  if (session.role !== 'owner' || !session.orgId) {
     return {
       success: false,
       message: 'Apenas o proprietário pode excluir clientes.',
@@ -26,7 +26,7 @@ export async function deleteClientAction(formData: FormData) {
   }
 
   try {
-    await deleteClientById(clientId);
+    await deleteClientById({ orgId: session.orgId, clientId });
   } catch (error) {
     console.error("❌ Erro ao excluir cliente:", error);
     return {

@@ -9,7 +9,7 @@ import { DashboardSkeleton } from "@/components/shared/skeletons/dashboard-skele
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type {
   AppClient,

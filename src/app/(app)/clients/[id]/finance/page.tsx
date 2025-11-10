@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSessionProfile } from "@/services/auth/session";
 import { roleSatisfies } from "@/services/auth/rbac";
 import { redirect } from "next/navigation";

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
-import { createSupabaseServerClient } from '@/lib/supabaseClient'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export async function createTask(formData: FormData): Promise<void> {
   const clientId = String(formData.get('clientId') ?? '').trim()

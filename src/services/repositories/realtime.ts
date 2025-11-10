@@ -1,4 +1,4 @@
-import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { SyncedTable, TableMap } from "@/types/tables";
 
 /**

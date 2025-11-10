@@ -1,6 +1,7 @@
 import { SidebarWithTopbar } from "@/components/shared/layout/SidebarWithTopbar";
 import RealtimeWrapper from "@/components/shared/RealtimeWrapper";
 import { getSessionProfile } from "@/services/auth/session";
+import type { AppRole } from "@/services/auth/rbac";
 import { redirect } from "next/navigation";
 
 /**
@@ -22,8 +23,12 @@ export default async function AppLayout({
   if (!orgId) redirect("/setup");
 
   // 🔹 Roles válidos no painel
-  const allowedRoles = ["owner", "manager", "member"];
-  const effectiveRole = allowedRoles.includes(role || "") ? role : "member";
+  const allowedRoles: AppRole[] = ["owner", "staff", "client"];
+  const fallbackRole: AppRole = "client";
+  const normalizedRole = role ?? fallbackRole;
+  const effectiveRole: AppRole = allowedRoles.includes(normalizedRole)
+    ? normalizedRole
+    : fallbackRole;
 
   return (
     <RealtimeWrapper orgId={orgId}>

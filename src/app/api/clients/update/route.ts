@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabaseClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -25,6 +25,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const orgId = user.user_metadata?.org_id;
+
+    if (!orgId) {
+      return NextResponse.json(
+        { message: "Organização não vinculada ao usuário." },
+        { status: 403 }
+      );
+    }
+
     const { error } = await supabase
       .from("app_clients")
       .update({
@@ -43,6 +52,7 @@ export async function POST(req: Request) {
         progress: body.progress,
       })
       .eq("id", body.id)
+      .eq("org_id", orgId)
       .select("id")
       .maybeSingle();
 

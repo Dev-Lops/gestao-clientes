@@ -1,16 +1,31 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabaseClient";
+import type { User } from "@supabase/supabase-js";
 
-export async function getSessionProfile() {
-  const supabase = await createServerSupabaseClient();
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
+import { resolveSessionContext, type SessionMemberSnapshot } from "./session-utils";
+import type { AppRole } from "./rbac";
+
+export type SessionProfile = {
+  user: User | null;
+  role: AppRole | null;
+  orgId: string | null;
+};
+
+export async function getSessionProfile(): Promise<SessionProfile> {
+  const supabase = await createSupabaseServerClient();
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+<<<<<<< HEAD
+    return { user: null, role: null, orgId: null };
+=======
     return { user: null, role: null, orgId: null } as const;
+>>>>>>> main
   }
 
   const { data: member, error: memberError } = await supabase
@@ -18,15 +33,25 @@ export async function getSessionProfile() {
     .select("id, org_id, role, status")
     .eq("user_id", user.id)
     .eq("status", "active")
+<<<<<<< HEAD
+    .maybeSingle<SessionMemberSnapshot>();
+=======
     .maybeSingle();
+>>>>>>> main
 
   if (memberError) {
     console.error("Erro ao buscar membro:", memberError);
   }
 
+<<<<<<< HEAD
+  let ownerOrgId: string | null = null;
+
+  if (!member) {
+=======
   let orgId = member?.org_id ?? null;
 
   if (!orgId) {
+>>>>>>> main
     const { data: ownerOrg, error: ownerError } = await supabase
       .from("app_orgs")
       .select("id")
@@ -37,6 +62,18 @@ export async function getSessionProfile() {
       console.error("Erro ao buscar organização do proprietário:", ownerError);
     }
 
+<<<<<<< HEAD
+    ownerOrgId = ownerOrg?.id ?? null;
+  }
+
+  const { orgId, role } = resolveSessionContext(member ?? null, ownerOrgId);
+
+  return {
+    user,
+    role,
+    orgId,
+  };
+=======
     orgId = ownerOrg?.id ?? null;
   }
 
@@ -45,4 +82,5 @@ export async function getSessionProfile() {
     role: member?.role ?? "owner",
     orgId,
   } as const;
+>>>>>>> main
 }

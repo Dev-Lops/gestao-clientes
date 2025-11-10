@@ -27,7 +27,7 @@ import { EditClientDialog } from "@/features/clients/components/EditClientDialog
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { AppClient } from "@/types/tables";
-import { createSupabaseBrowserClient } from "@/lib/supabaseClient";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function ClientInfoPageClient({
   id,

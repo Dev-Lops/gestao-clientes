@@ -1,5 +1,4 @@
 import {
-  createBrowserClient,
   createServerClient,
   type CookieOptions,
 } from "@supabase/ssr";
@@ -11,13 +10,16 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/config/env";
 
 type CookieStore = Awaited<ReturnType<typeof cookies>>;
 
-let browserClient: SupabaseClient | null = null;
+type ServerClient = SupabaseClient;
 
 function getSupabaseCredentials() {
-  return { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY };
+  return {
+    url: SUPABASE_URL,
+    anonKey: SUPABASE_ANON_KEY,
+  } as const;
 }
 
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(): Promise<ServerClient> {
   const cookieStore = await cookies();
   const { url, anonKey } = getSupabaseCredentials();
 
@@ -26,17 +28,11 @@ export async function createSupabaseServerClient() {
       get(name: string) {
         return cookieStore.get(name)?.value;
       },
-      set(name: string, value: string, options: CookieOptions) {
-        void name;
-        void value;
-        void options;
+      set() {
         // cookies() em renderizações server-side padrão é somente leitura.
-        // A atualização real deve ocorrer via Route Handler usando createRouteHandlerClient.
       },
-      remove(name: string, options: CookieOptions) {
-        void name;
-        void options;
-        // Não faz nada aqui pelo mesmo motivo do método set.
+      remove() {
+        // cookies() em renderizações server-side padrão é somente leitura.
       },
     },
   });
@@ -45,7 +41,7 @@ export async function createSupabaseServerClient() {
 export function createSupabaseRouteHandlerClient(
   cookieStore: CookieStore,
   response: NextResponse
-) {
+): ServerClient {
   const { url, anonKey } = getSupabaseCredentials();
 
   return createServerClient(url, anonKey, {
@@ -63,16 +59,10 @@ export function createSupabaseRouteHandlerClient(
   });
 }
 
-export function createSupabaseBrowserClient(): SupabaseClient {
-  if (browserClient) {
-    return browserClient;
-  }
+export type SupabaseServerClient = Awaited<
+  ReturnType<typeof createSupabaseServerClient>
+>;
 
-  const { url, anonKey } = getSupabaseCredentials();
-  browserClient = createBrowserClient(url, anonKey);
-  return browserClient;
-}
-
-// Backwards compatibility with previous helper names
+// Backwards compatibility exports for legacy imports
 export const createServerSupabaseClient = createSupabaseServerClient;
 export const createRouteHandlerClient = createSupabaseRouteHandlerClient;
