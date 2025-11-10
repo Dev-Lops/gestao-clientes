@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   // Cria uma resposta que redireciona para /setup
   const response = NextResponse.redirect(`${origin}/setup`)
 
-  const cookieStore = await cookies()
+  const cookieStore = cookies()
   const supabase = createRouteHandlerClient(cookieStore, response)
 
   // 🔹 Troca o código OAuth por uma sessão válida

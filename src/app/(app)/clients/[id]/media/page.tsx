@@ -261,8 +261,7 @@ export default function ClientMediaPage() {
 /* ------------------ Card de Mídia ------------------ */
 function MediaCard({ item }: { item: MediaItem }) {
   const supabase = useMemo(() => createBrowserSupabaseClient(), []);
-  const [publicUrl, setPublicUrl] = useState("");
->>>>>>> 66d34b01a64c46676e180dadbedcf691e78156c2
+  const [url, setUrl] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(true);
 
   useEffect(() => {
@@ -321,8 +320,9 @@ function MediaCard({ item }: { item: MediaItem }) {
             variant="outline"
             size="icon"
             className="hover:bg-slate-100"
+            disabled={!url}
           >
-            <a href={url} title="download" download>
+            <a href={url || undefined} title="download" download>
               <Download className="h-4 w-4" />
             </a>
           </Button>
