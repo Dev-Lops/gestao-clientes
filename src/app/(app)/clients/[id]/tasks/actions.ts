@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { can, isOwner } from "@/services/auth/rbac";
 import { getSessionProfile } from "@/services/auth/session";
 import { revalidatePath } from "next/cache";
 
@@ -15,7 +15,7 @@ export async function createTask(formData: FormData) {
 
   const { user, orgId, role } = await getSessionProfile();
   if (!user || !orgId) return;
-  if (!(isOwner(role) || isStaffOrAbove(role))) return;
+  if (!(isOwner(role) || can(role, "staff"))) return;
 
   const supabase = await createSupabaseServerClient();
 
@@ -44,7 +44,7 @@ export async function toggleTask(formData: FormData) {
 
   const { user, role } = await getSessionProfile();
   if (!user) return;
-  if (!(isOwner(role) || isStaffOrAbove(role))) return;
+  if (!(isOwner(role) || can(role, "staff"))) return;
 
   const newStatus = status === "done" ? "todo" : "done";
 
@@ -75,7 +75,7 @@ export async function deleteTask(formData: FormData) {
     throw new Error("Organização não encontrada.");
   }
 
-  if (!(isOwner(role) || isStaffOrAbove(role))) {
+  if (!(isOwner(role) || can(role, "staff"))) {
     throw new Error("Você não tem permissão para excluir tarefas.");
   }
 

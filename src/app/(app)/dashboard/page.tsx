@@ -7,7 +7,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { DashboardSkeleton } from "@/components/shared/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/appStore";
 import type { AppClient, AppTask, ContentCalendarItem } from "@/types/tables";
 

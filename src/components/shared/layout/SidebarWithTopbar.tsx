@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { can, type AppRole } from "@/services/auth/rbac";
+import { can, type Role } from "@/services/auth/rbac";
 
 import { cn } from "@/lib/utils";
 import {
@@ -20,13 +20,13 @@ type NavLink = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
-  minRole: Exclude<AppRole, "guest">;
+  minRole: Role;
 };
 
 type Props = {
   children: ReactNode;
   userName?: string;
-  role?: AppRole;
+  role?: Role | null;
 };
 
 // Links e rótulos
@@ -47,19 +47,20 @@ const NAV_LINKS: NavLink[] = [
   },
 ];
 
-const ROLE_LABEL: Record<AppRole, string> = {
-  guest: "Convidado",
+const ROLE_LABEL: Record<Role, string> = {
   client: "Cliente",
   staff: "Equipe",
   owner: "Proprietário",
 };
+
+const DEFAULT_ROLE_LABEL = "Visitante";
 
 // -----------------------------------------------------
 
 export function SidebarWithTopbar({
   children,
   userName = "Usuário",
-  role = "guest",
+  role = null,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -77,9 +78,11 @@ export function SidebarWithTopbar({
 
   // Links filtrados pelo papel
   const availableLinks = useMemo(
-    () => NAV_LINKS.filter((link) => can(role, link.minRole)),
+    () => NAV_LINKS.filter((link) => can(role ?? null, link.minRole)),
     [role],
   );
+
+  const roleLabel = role ? ROLE_LABEL[role] : DEFAULT_ROLE_LABEL;
 
   // -----------------------------------------------------
   // Layout principal
@@ -172,12 +175,10 @@ export function SidebarWithTopbar({
           <span
             className={cn(
               "inline-flex items-center justify-center rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide",
-              role === "guest"
-                ? "bg-slate-300 text-slate-700"
-                : "bg-slate-900 text-white",
+              role ? "bg-slate-900 text-white" : "bg-slate-300 text-slate-700",
             )}
           >
-            {ROLE_LABEL[role]}
+            {roleLabel}
           </span>
         </header>
 
