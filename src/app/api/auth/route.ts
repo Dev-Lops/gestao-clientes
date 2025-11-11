@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(`${origin}/auth/login?error=user_not_found`);
+    return NextResponse.redirect(`${origin}/login?error=user_not_found`);
   }
 
   const normalizedEmail = user.email?.toLowerCase() ?? "";

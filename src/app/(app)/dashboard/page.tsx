@@ -9,11 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
-import type {
-  AppClient,
-  AppTask,
-  ContentCalendarItem,
-} from "@/types/tables";
+import type { AppClient, AppTask, ContentCalendarItem } from "@/types/tables";
 
 // rótulos que tu já usa
 const STATUS_LABELS: Record<string, string> = {
@@ -54,8 +50,11 @@ function RealtimeDashboard() {
   const tasks =
     ((useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? []) || [];
   const agenda =
-    ((useAppStore((s) => s.tables.app_content_calendar) as ContentCalendarItem[]) ??
-      []) || [];
+    ((useAppStore(
+      (s) => s.tables.app_content_calendar,
+    ) as ContentCalendarItem[]) ??
+      []) ||
+    [];
 
   const [loading, setLoading] = useState(clients.length === 0);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +81,9 @@ function RealtimeDashboard() {
 
           supabase
             .from("app_tasks")
-            .select("id, org_id, client_id, title, status, urgency, due_date, created_at")
+            .select(
+              "id, org_id, client_id, title, status, urgency, due_date, created_at",
+            )
             .eq("org_id", orgId ?? "")
             .order("created_at", { ascending: false })
             .limit(50),
@@ -95,17 +96,8 @@ function RealtimeDashboard() {
             .limit(20),
         ]);
 
-
-        if (
-          clientsRes.error ||
-          tasksRes.error ||
-          agendaRes.error
-        ) {
-          throw (
-            clientsRes.error ||
-            tasksRes.error ||
-            agendaRes.error
-          );
+        if (clientsRes.error || tasksRes.error || agendaRes.error) {
+          throw clientsRes.error || tasksRes.error || agendaRes.error;
         }
 
         if (cancelled) return;
@@ -153,14 +145,13 @@ function RealtimeDashboard() {
 
   const activeClients = clients.filter((c) => c.status === "active").length;
   const onboardingClients = clients.filter(
-    (c) => c.status === "onboarding"
+    (c) => c.status === "onboarding",
   ).length;
   const pausedClients = clients.filter((c) => c.status === "paused").length;
 
   const urgentTasks = tasks.filter(
     (t) =>
-      (t.urgency === "high" || t.urgency === "critical") &&
-      t.status !== "done"
+      (t.urgency === "high" || t.urgency === "critical") && t.status !== "done",
   );
 
   const lateTasks = tasks.filter((t) => {
@@ -171,7 +162,7 @@ function RealtimeDashboard() {
   });
 
   const todayTasks = tasks.filter(
-    (t) => t.due_date && isToday(t.due_date) && t.status !== "done"
+    (t) => t.due_date && isToday(t.due_date) && t.status !== "done",
   );
 
   // ordem de prioridade pro bloco "Prioridades do dia"
@@ -181,7 +172,7 @@ function RealtimeDashboard() {
     ...todayTasks.filter(
       (tt) =>
         !urgentTasks.find((u) => u.id === tt.id) &&
-        !lateTasks.find((l) => l.id === tt.id)
+        !lateTasks.find((l) => l.id === tt.id),
     ),
   ].slice(0, 6);
 
@@ -283,9 +274,9 @@ function RealtimeDashboard() {
                 </div>
                 <p className="text-xs text-slate-500">
                   {task.due_date
-                    ? `Prazo: ${new Date(
-                      task.due_date
-                    ).toLocaleDateString("pt-BR")}`
+                    ? `Prazo: ${new Date(task.due_date).toLocaleDateString(
+                        "pt-BR",
+                      )}`
                     : "Sem prazo"}
                 </p>
               </Card>
@@ -327,9 +318,9 @@ function RealtimeDashboard() {
                 <p className="text-xs text-slate-500 mt-1">
                   {event.event_date
                     ? new Date(event.event_date).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "short",
-                    })
+                        day: "2-digit",
+                        month: "short",
+                      })
                     : "Data não definida"}
                 </p>
                 {event.notes ? (
@@ -394,12 +385,12 @@ function RealtimeDashboard() {
                     Criado em:{" "}
                     {client.created_at
                       ? new Date(client.created_at).toLocaleDateString(
-                        "pt-BR",
-                        {
-                          day: "2-digit",
-                          month: "short",
-                        }
-                      )
+                          "pt-BR",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                          },
+                        )
                       : "—"}
                   </p>
                 </Card>

@@ -1,92 +1,67 @@
 "use client";
 
+import { deleteMediaItem } from "@/app/(app)/clients/[id]/media/actions";
 import { Button } from "@/components/ui/button";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-
 import { Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import { toast } from "sonner";
 
 interface DeleteMediaButtonProps {
   itemId: string;
-  filePath: string;
+  clientId: string;
+  canDelete?: boolean;
 }
 
 export function DeleteMediaButton({
   itemId,
-  filePath,
+  clientId,
+  canDelete = false,
 }: DeleteMediaButtonProps) {
-  const supabase = createSupabaseBrowserClient();
-  const [loading, setLoading] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
-  // ✅ Checa se o usuário logado é owner (sem cookies do servidor)
-  useEffect(() => {
-    async function fetchRole() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+  if (!canDelete) {
+    return null;
+  }
 
-      const { data: member } = await supabase
-        .from("app_members")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      setIsOwner(member?.role === "owner");
-    }
-
-    fetchRole();
-  }, [supabase]);
-
-  const handleDelete = useCallback(async () => {
-    const confirm = window.confirm(
-      "Tem certeza que deseja excluir este arquivo?",
+  function handleDelete() {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja excluir este arquivo? Essa ação não pode ser desfeita.",
     );
-    if (!confirm) return;
 
-    if (!isOwner) {
-      toast.error("Apenas o proprietário pode excluir arquivos.");
+    if (!confirmed) {
       return;
     }
 
-    setLoading(true);
-    try {
-      // Excluir do Storage
-      const { error: storageErr } = await supabase.storage
-        .from("media")
-        .remove([filePath]);
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.append("id", itemId);
+        formData.append("clientId", clientId);
 
-      if (storageErr) throw storageErr;
-
-      // Excluir registro do banco
-      const { error: dbErr } = await supabase
-        .from("app_media_items")
-        .delete()
-        .eq("id", itemId);
-
-      if (dbErr) throw dbErr;
-
-      toast.success("Arquivo excluído com sucesso!");
-      window.location.reload();
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao excluir arquivo.");
-    } finally {
-      setLoading(false);
-    }
-  }, [filePath, itemId, isOwner, supabase]);
+        await deleteMediaItem(formData);
+        toast.success("Arquivo excluído com sucesso!");
+        router.refresh();
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao excluir arquivo.",
+        );
+      }
+    });
+  }
 
   return (
     <Button
       size="icon"
       variant="ghost"
-      disabled={loading}
       onClick={handleDelete}
-      className="hover:bg-red-50 text-red-600"
+      disabled={isPending}
+      className="text-red-600 hover:bg-red-50"
+      aria-label="Excluir arquivo"
     >
-      <Trash2 className="h-4 w-4" />
+      <Trash2 className="h-4 w-4" aria-hidden />
     </Button>
   );
 }

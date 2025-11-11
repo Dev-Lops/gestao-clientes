@@ -58,14 +58,37 @@ export async function toggleTask(formData: FormData) {
   revalidatePath(`/clients/${clientId}/tasks`);
 }
 
-export async function deleteTask(id: string, clientId: string) {
-  const { user, role } = await getSessionProfile();
-  if (!user) return;
-  if (!(isOwner(role) || isStaffOrAbove(role))) return;
+export async function deleteTask(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const clientId = String(formData.get("clientId") ?? "").trim();
+
+  if (!id || !clientId) {
+    throw new Error("Dados de exclusão inválidos.");
+  }
+
+  const { user, role, orgId } = await getSessionProfile();
+  if (!user) {
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
+
+  if (!orgId) {
+    throw new Error("Organização não encontrada.");
+  }
+
+  if (!(isOwner(role) || isStaffOrAbove(role))) {
+    throw new Error("Você não tem permissão para excluir tarefas.");
+  }
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("app_tasks").delete().eq("id", id);
-  if (!error) {
-    revalidatePath(`/clients/${clientId}/tasks`);
+  const { error } = await supabase
+    .from("app_tasks")
+    .delete()
+    .eq("id", id)
+    .eq("org_id", orgId);
+
+  if (error) {
+    throw new Error(error.message);
   }
+
+  revalidatePath(`/clients/${clientId}/tasks`);
 }

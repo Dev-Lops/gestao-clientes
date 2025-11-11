@@ -89,9 +89,6 @@ export default async function ClientsPage() {
                     {client.name}
                   </h3>
                   <StatusBadge status={client.status as ClientStatus} />
-
-
-
                 </div>
 
                 <p className="text-sm text-slate-500">

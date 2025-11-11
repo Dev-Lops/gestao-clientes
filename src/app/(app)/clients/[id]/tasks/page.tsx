@@ -69,7 +69,7 @@ export default async function TasksPage({
 
   const totalTasks = tasks?.length ?? 0;
   const completedTasks = (tasks ?? []).filter(
-    (task) => task.status === "done"
+    (task) => task.status === "done",
   ).length;
   const pendingTasks = Math.max(totalTasks - completedTasks, 0);
   const pct =
@@ -111,7 +111,6 @@ export default async function TasksPage({
         />
       </div>
 
-
       {/* Abas de filtro */}
       <div className="flex gap-2 flex-wrap">
         {[
@@ -128,7 +127,7 @@ export default async function TasksPage({
               "px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
               statusFilter === tab.key
                 ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50",
             )}
           >
             {tab.label}
@@ -219,7 +218,7 @@ export default async function TasksPage({
               key={t.id}
               className={cn(
                 "flex items-center justify-between p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 bg-white/80 backdrop-blur-sm border border-slate-200",
-                urgencyColor
+                urgencyColor,
               )}
             >
               <div className="flex items-center gap-4">
@@ -236,7 +235,7 @@ export default async function TasksPage({
                         "rounded-full w-7 h-7 flex items-center justify-center text-xs font-medium",
                         t.status === "done"
                           ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "hover:bg-slate-100"
+                          : "hover:bg-slate-100",
                       )}
                     >
                       {t.status === "done" ? "✓" : "○"}
@@ -246,7 +245,7 @@ export default async function TasksPage({
                 <div
                   className={cn(
                     "text-sm font-medium text-slate-800",
-                    t.status === "done" && "line-through text-slate-500"
+                    t.status === "done" && "line-through text-slate-500",
                   )}
                 >
                   {t.title}
@@ -261,7 +260,9 @@ export default async function TasksPage({
                       : `Prazo: ${new Date(t.due_date).toLocaleDateString("pt-BR")}`}
                   </span>
                 )}
-                {canManage && <DeleteTaskButton id={t.id} clientId={clientId} />}
+                {canManage && (
+                  <DeleteTaskButton id={t.id} clientId={clientId} />
+                )}
               </div>
             </Card>
           );

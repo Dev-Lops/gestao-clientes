@@ -21,9 +21,8 @@ export async function POST(
 
   const { data: client, error } = await readerClient
     .from("app_clients")
-    .select("id, member_id")
+    .select("id, org_id, invited_email")
     .eq("id", id)
-    .eq("org_id", session.orgId)
     .maybeSingle();
 
   if (error) {
@@ -36,23 +35,24 @@ export async function POST(
     return new Response("Cliente não encontrado.", { status: 404 });
   }
 
-  if (client.member_id) {
-    const { error: memberError } = await adminClient
-      .from("app_members")
-      .delete()
-      .eq("id", client.member_id)
-      .eq("org_id", session.orgId);
+  if (client.org_id !== session.orgId) {
+    return new Response("Não autorizado.", { status: 403 });
+  }
 
-    if (memberError) {
-      return new Response(`Erro ao remover membro: ${memberError.message}`, {
-        status: 500,
-      });
-    }
+  const { error: unlinkError } = await adminClient
+    .from("app_client_users")
+    .delete()
+    .eq("client_id", id);
+
+  if (unlinkError) {
+    return new Response(`Erro ao remover vínculo: ${unlinkError.message}`, {
+      status: 500,
+    });
   }
 
   const { error: updateError } = await adminClient
     .from("app_clients")
-    .update({ invited_email: null, member_id: null })
+    .update({ invited_email: null })
     .eq("id", id)
     .eq("org_id", session.orgId);
 
