@@ -8,6 +8,7 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
+  passWithNoTests: true,
   collectCoverageFrom: [
     "src/config/env.ts",
     "src/services/auth/session.ts",
