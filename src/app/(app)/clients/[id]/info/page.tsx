@@ -19,5 +19,5 @@ export default async function ClientInfoPage({ params }: ClientInfoPageProps) {
     redirect("/setup");
   }
 
-  return <ClientInfoPageClient id={id} userRole={role ?? "guest"} />;
+  return <ClientInfoPageClient id={id} userRole={role} />;
 }

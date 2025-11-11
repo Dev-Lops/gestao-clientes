@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { can, isOwner } from "@/services/auth/rbac";
 import { getSessionProfile } from "@/services/auth/session";
 import { getClientById } from "@/services/repositories/clients";
 import { createInvitation } from "@/services/repositories/invitations";
@@ -33,7 +33,7 @@ export async function inviteClientAction(input: {
     throw new Error("Organização não encontrada.");
   }
 
-  if (!(isOwner(role) || isStaffOrAbove(role))) {
+  if (!(isOwner(role) || can(role, "staff"))) {
     throw new Error("Você não tem permissão para convidar clientes.");
   }
 

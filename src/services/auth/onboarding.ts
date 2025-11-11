@@ -1,20 +1,16 @@
-import { parseRole, type AppRole } from "@/services/auth/rbac";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type { User } from "@supabase/supabase-js";
 
-type SupabaseServerClient = Awaited<
-  ReturnType<typeof createSupabaseServerClient>
->;
-type ServerClient = SupabaseServerClient;
+type ServerClient = ReturnType<typeof createSupabaseServerClient>;
 
 async function syncUserRoleMetadata(
   supabase: ServerClient,
   user: User,
-  nextRole: AppRole,
+  nextRole: "owner" | "staff" | "client",
 ): Promise<void> {
   const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-  const currentRole = parseRole(metadata.role as string | null);
+  const currentRole = (metadata.role as string | null)?.toLowerCase();
 
   if (currentRole === nextRole) return;
 

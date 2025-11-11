@@ -25,16 +25,18 @@ import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBad
 import { DeleteClientButton } from "@/features/clients/components/DeleteClientButton";
 import { EditClientDialog } from "@/features/clients/components/EditClientDialog";
 import { InviteClientDialog } from "@/features/clients/components/InviteClientDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AppClient } from "@/types/tables";
 import { ClientStatus } from "@/types/client";
+
+type UserRole = "owner" | "staff" | "client" | null;
 
 export default function ClientInfoPageClient({
   id,
   userRole,
 }: {
   id: string;
-  userRole: string;
+  userRole: UserRole;
 }) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [client, setClient] = useState<AppClient | null>(null);
@@ -125,6 +127,12 @@ export default function ClientInfoPageClient({
                 <Settings className="h-4 w-4" /> Editar
               </Button>
               <InviteClientDialog clientId={id} clientName={client.name} />
+              <EditClientDialog
+                open={open}
+                setOpen={setOpen}
+                client={client}
+                onSuccess={handleSuccess}
+              />
             </>
           )}
 
@@ -201,41 +209,92 @@ export default function ClientInfoPageClient({
         </p>
       </Card>
 
-      {/* Histórico */}
-      <Card className="p-6 border border-slate-200 bg-white shadow-sm">
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-          <ClipboardList className="h-4 w-4 text-indigo-600" /> Histórico rápido
-        </h3>
-        <ul className="space-y-1 text-sm text-slate-700">
-          <li>
-            📅 Início:{" "}
-            {client.start_date
-              ? new Date(client.start_date).toLocaleDateString("pt-BR")
-              : "—"}
-          </li>
-          <li>
-            🕒 Última reunião:{" "}
-            {client.last_meeting_at
-              ? new Date(client.last_meeting_at).toLocaleDateString("pt-BR")
-              : "—"}
-          </li>
-          <li>💸 Método de pagamento: {client.payment_method || "—"}</li>
-          <li>📆 Dia de cobrança: {client.billing_day || "—"}</li>
-        </ul>
-      </Card>
+      {/* Cartões de ações */}
+      <section className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Agenda
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                Próximos eventos
+              </h3>
+            </div>
+            <Calendar className="h-5 w-5 text-indigo-500" />
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            Planeje o próximo encontro com o cliente e acompanhe os
+            compromissos.
+          </p>
+          <Link
+            href={`/clients/${id}/meetings`}
+            className="mt-6 inline-flex items-center gap-2 text-indigo-600 text-sm font-medium"
+          >
+            <Clock className="h-4 w-4" /> Ver agenda
+          </Link>
+        </Card>
 
-      {userRole === "owner" && (
-        <div className="pt-6 border-t">
+        <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Estratégia
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                Diretrizes do projeto
+              </h3>
+            </div>
+            <ClipboardList className="h-5 w-5 text-indigo-500" />
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            Revise os objetivos estratégicos, canais prioritários e entregas
+            combinadas com o cliente.
+          </p>
+          <Link
+            href={`/clients/${id}/strategy`}
+            className="mt-6 inline-flex items-center gap-2 text-indigo-600 text-sm font-medium"
+          >
+            <ClipboardList className="h-4 w-4" /> Ver estratégia
+          </Link>
+        </Card>
+
+        <Card className="p-5 border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Financeiro
+              </p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                Status de pagamentos
+              </h3>
+            </div>
+            <Coins className="h-5 w-5 text-indigo-500" />
+          </div>
+          <p className="mt-4 text-sm text-slate-600">
+            Consulte faturas, datas de cobrança e negociações pendentes.
+          </p>
+          <Link
+            href={`/clients/${id}/finance`}
+            className="mt-6 inline-flex items-center gap-2 text-indigo-600 text-sm font-medium"
+          >
+            <Coins className="h-4 w-4" /> Ver financeiro
+          </Link>
+        </Card>
+      </section>
+
+      {/* Ações finais */}
+      {canManageClient && (
+        <Card className="p-6 border border-slate-200 bg-red-50/80 text-red-700">
+          <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Zona de risco
+          </h3>
+          <p className="text-sm mb-4">
+            Exclua o cliente permanentemente. Esta ação não pode ser desfeita.
+          </p>
           <DeleteClientButton clientId={id} clientName={client.name} />
-        </div>
+        </Card>
       )}
-
-      <EditClientDialog
-        open={open}
-        setOpen={setOpen}
-        client={client}
-        onSuccess={handleSuccess}
-      />
     </motion.div>
   );
 }

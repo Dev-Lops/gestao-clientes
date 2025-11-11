@@ -1,5 +1,5 @@
 // app/auth/callback/route.ts
-import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server";
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/route";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {

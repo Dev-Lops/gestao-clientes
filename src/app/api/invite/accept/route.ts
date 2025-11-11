@@ -1,71 +1,62 @@
-import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  acceptInvitation,
-  InvitationError,
-  InvitationExpiredError,
-  InvitationNotFoundError,
-} from "@/services/repositories/invitations";
+// aqui assumo que o usuário já está logado no Supabase
+export async function POST(req: Request) {
+  const body = await req.json();
+  const { token, user_id } = body as { token: string; user_id: string };
 
-function redirectTo(
-  origin: string,
-  path: string,
-  query: Record<string, string> = {},
-) {
-  const url = new URL(path, origin);
+  const supabase = createSupabaseServiceRoleClient();
 
-  Object.entries(query).forEach(([key, value]) => {
-    url.searchParams.set(key, value);
-  });
+  const { data: invite, error: inviteErr } = await supabase
+    .from("app_invitations")
+    .select("*")
+    .eq("token", token)
+    .maybeSingle();
 
-  return NextResponse.redirect(url.toString());
-}
-
-function getToken(request: NextRequest): string | null {
-  const url = new URL(request.url);
-  return url.searchParams.get("token");
-}
-
-export async function GET(request: NextRequest) {
-  const origin = new URL(request.url).origin;
-  const token = getToken(request);
-
-  if (!token) {
-    return redirectTo(origin, "/login", { error: "invite" });
-  }
-
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    const loginUrl = new URL("/login", origin);
-    loginUrl.searchParams.set(
-      "redirectTo",
-      `/invite/accept?token=${encodeURIComponent(token)}`,
+  if (inviteErr || !invite) {
+    return NextResponse.json(
+      { ok: false, message: "convite inválido" },
+      { status: 400 },
     );
-    return NextResponse.redirect(loginUrl.toString());
   }
 
-  try {
-    await acceptInvitation({ token, userId: user.id });
-    return redirectTo(origin, "/dashboard", { invite: "ok" });
-  } catch (error) {
-    if (error instanceof InvitationNotFoundError) {
-      return redirectTo(origin, "/dashboard", { invite: "invalid" });
-    }
+  // cria membro
+  const { error: memberErr } = await supabase.from("app_members").insert([
+    {
+      org_id: invite.org_id,
+      user_id,
+      role: invite.role,
+      status: "active",
+      email: invite.email,
+    },
+  ]);
 
-    if (error instanceof InvitationExpiredError) {
-      return redirectTo(origin, "/dashboard", { invite: "expired" });
-    }
-
-    if (error instanceof InvitationError) {
-      return redirectTo(origin, "/dashboard", { invite: "error" });
-    }
-
-    throw error;
+  if (memberErr) {
+    console.error(memberErr);
+    return NextResponse.json(
+      { ok: false, message: "erro ao aceitar convite" },
+      { status: 500 },
+    );
   }
+
+  // opcional: se for cliente convidado para 1 cliente específico
+  if (invite.client_id && invite.role === "client") {
+    await supabase.from("app_client_access").insert([
+      {
+        org_id: invite.org_id,
+        client_id: invite.client_id,
+        user_id,
+        role: "client",
+      },
+    ]);
+  }
+
+  // marca convite como aceito
+  await supabase
+    .from("app_invitations")
+    .update({ accepted_at: new Date().toISOString() })
+    .eq("id", invite.id);
+
+  return NextResponse.json({ ok: true });
 }
