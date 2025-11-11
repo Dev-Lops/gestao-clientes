@@ -1,8 +1,8 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { type SupabaseServerClient } from "@/lib/supabase/server";
 
 import type { User } from "@supabase/supabase-js";
 
-type ServerClient = ReturnType<typeof createSupabaseServerClient>;
+type ServerClient = SupabaseServerClient;
 
 async function syncUserRoleMetadata(
   supabase: ServerClient,

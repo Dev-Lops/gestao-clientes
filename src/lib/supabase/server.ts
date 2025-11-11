@@ -17,9 +17,9 @@ function assertEnv() {
 }
 
 // ⚠ para SSR / server components
-export function createSupabaseServerClient(): SupabaseServerClient {
+export async function createSupabaseServerClient(): Promise<SupabaseServerClient> {
   assertEnv();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll: () => cookieStore.getAll(),

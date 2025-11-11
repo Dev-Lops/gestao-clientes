@@ -7,7 +7,7 @@ export type SessionProfile = {
 };
 
 export async function getSessionProfile(): Promise<SessionProfile> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   // 1. user
   const {
