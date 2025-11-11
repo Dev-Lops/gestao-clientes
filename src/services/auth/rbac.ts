@@ -3,21 +3,36 @@ export type AppRole = "guest" | "client" | "staff" | "owner";
 
 const ROLE_ORDER: AppRole[] = ["guest", "client", "staff", "owner"];
 
-export function can(role: AppRole | null, needed: AppRole) {
-  if (!role) return false;
-  return ROLE_ORDER.indexOf(role) >= ROLE_ORDER.indexOf(needed);
-}
-
-export const isOwner = (r: AppRole | null) => r === "owner";
-export const isStaffOrAbove = (r: AppRole | null) =>
-  r === "owner" || r === "staff";
-
-export function roleSatisfies(role: AppRole | null, required: AppRole) {
-  return can(role, required);
-}
-
 export function parseRole(value: string | null | undefined): AppRole {
-  if (!value) return "guest";
+  if (!value) {
+    return "guest";
+  }
+
   const normalized = value.toLowerCase() as AppRole;
   return ROLE_ORDER.includes(normalized) ? normalized : "guest";
+}
+
+export function can(role: AppRole | null, required: AppRole): boolean {
+  if (!role) {
+    return false;
+  }
+
+  return ROLE_ORDER.indexOf(role) >= ROLE_ORDER.indexOf(required);
+}
+
+export const roleSatisfies = can;
+
+export const isOwner = (role: AppRole | null) => role === "owner";
+
+export const isStaff = (role: AppRole | null) => role === "staff";
+
+export const isClient = (role: AppRole | null) => role === "client";
+
+export const isStaffOrAbove = (role: AppRole | null) =>
+  role === "owner" || role === "staff";
+
+export function assertCan(role: AppRole | null, required: AppRole) {
+  if (!can(role, required)) {
+    throw new Error("Permissão insuficiente.");
+  }
 }

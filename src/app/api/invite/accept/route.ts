@@ -1,29 +1,19 @@
-// app/invite/accept/route.ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  acceptInvitation,
+  InvitationError,
+  InvitationExpiredError,
+  InvitationNotFoundError,
+} from "@/services/repositories/invitations";
 
-class InviteAcceptanceError extends Error {}
-
-class InviteService {
-  constructor(
-    private readonly supabase: Awaited<
-      ReturnType<typeof createSupabaseServerClient>
-    >,
-  ) {}
-
-  async acceptInvite({ userId, token }: { userId: string; token: string }) {
-    console.info("Invite accepted for user", userId, "with token", token);
-    return { userId, token };
-  }
-}
-
-const redirectTo = (
+function redirectTo(
   origin: string,
   path: string,
   query: Record<string, string> = {},
-) => {
+) {
   const url = new URL(path, origin);
 
   Object.entries(query).forEach(([key, value]) => {
@@ -31,45 +21,49 @@ const redirectTo = (
   });
 
   return NextResponse.redirect(url.toString());
-};
+}
 
-const getTokenFrom = (request: NextRequest): string | null => {
+function getToken(request: NextRequest): string | null {
   const url = new URL(request.url);
-
   return url.searchParams.get("token");
-};
+}
 
-export async function GET(req: NextRequest) {
-  const token = getTokenFrom(req);
-  const origin = new URL(req.url).origin;
+export async function GET(request: NextRequest) {
+  const origin = new URL(request.url).origin;
+  const token = getToken(request);
 
   if (!token) {
-    return redirectTo(origin, "/login", { error: "token" });
+    return redirectTo(origin, "/login", { error: "invite" });
   }
 
   const supabase = await createSupabaseServerClient();
-  const inviteService = new InviteService(supabase);
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return redirectTo(origin, "/login", {
-      next: `/invite/accept?token=${encodeURIComponent(token)}`,
-    });
+    const loginUrl = new URL("/login", origin);
+    loginUrl.searchParams.set(
+      "redirectTo",
+      `/invite/accept?token=${encodeURIComponent(token)}`,
+    );
+    return NextResponse.redirect(loginUrl.toString());
   }
 
   try {
-    await inviteService.acceptInvite({
-      userId: user.id,
-      token,
-    });
-
+    await acceptInvitation({ token, userId: user.id });
     return redirectTo(origin, "/dashboard", { invite: "ok" });
   } catch (error) {
-    if (error instanceof InviteAcceptanceError) {
-      return redirectTo(origin, "/dashboard", { error: "invite" });
+    if (error instanceof InvitationNotFoundError) {
+      return redirectTo(origin, "/dashboard", { invite: "invalid" });
+    }
+
+    if (error instanceof InvitationExpiredError) {
+      return redirectTo(origin, "/dashboard", { invite: "expired" });
+    }
+
+    if (error instanceof InvitationError) {
+      return redirectTo(origin, "/dashboard", { invite: "error" });
     }
 
     throw error;

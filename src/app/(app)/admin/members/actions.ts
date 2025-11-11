@@ -1,45 +1,58 @@
 "use server";
 
-import { getSessionProfile } from "@/services/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isOwner } from "@/services/auth/rbac";
+import { getSessionProfile } from "@/services/auth/session";
+import {
+  createInvitation,
+  type InvitationRole,
+} from "@/services/repositories/invitations";
+import { sendInvitationEmail } from "@/services/email/invitations";
 
 const ALLOWED_ROLES = ["owner", "staff", "client"] as const;
 
-/**
- * 🔹 Envia convite para novo membro (staff ou client)
- */
-export async function inviteStaffAction(formData: FormData) {
-  const supabase = await createSupabaseServerClient();
+const inviteSchema = z.object({
+  email: z.string().email("Informe um e-mail válido."),
+  full_name: z
+    .string()
+    .transform((value) => value.trim())
+    .optional()
+    .transform((value) => (value ? value : null)),
+  role: z.enum(["staff", "client"] as const),
+});
 
+export async function inviteStaffAction(formData: FormData) {
   const { user, role, orgId } = await getSessionProfile();
 
   if (!user) throw new Error("Usuário não autenticado.");
-  if (role !== "owner")
+  if (!isOwner(role))
     throw new Error("Apenas o proprietário pode convidar membros.");
   if (!orgId) throw new Error("Organização não identificada.");
 
-  const email = String(formData.get("email") ?? "").trim();
-  const full_name = String(formData.get("full_name") ?? "").trim() || null;
-  const inviteRoleRaw = String(formData.get("role") ?? "staff");
-  const inviteRole = ALLOWED_ROLES.includes(
-    inviteRoleRaw as (typeof ALLOWED_ROLES)[number],
-  )
-    ? (inviteRoleRaw as (typeof ALLOWED_ROLES)[number])
-    : "staff";
-
-  if (!email) throw new Error("O e-mail é obrigatório.");
-
-  const organizationId = orgId;
-
-  const { error } = await supabase.rpc("invite_member", {
-    p_org: organizationId,
-    p_email: email,
-    p_full_name: full_name,
-    p_role: inviteRole,
+  const parsed = inviteSchema.parse({
+    email: String(formData.get("email") ?? ""),
+    full_name: String(formData.get("full_name") ?? ""),
+    role: String(formData.get("role") ?? "staff"),
   });
 
-  if (error) throw new Error(`Erro ao convidar membro: ${error.message}`);
+  const invitation = await createInvitation({
+    orgId,
+    createdBy: user.id,
+    email: parsed.email.toLowerCase(),
+    role: parsed.role as InvitationRole,
+    fullName: parsed.full_name,
+  });
+
+  await sendInvitationEmail({
+    email: parsed.email,
+    token: invitation.token,
+    role: parsed.role,
+    expiresAt: invitation.expiresAt,
+    fullName: parsed.full_name ?? undefined,
+  });
 
   revalidatePath("/admin/members");
 }
@@ -52,7 +65,7 @@ export async function updateMemberRoleAction(formData: FormData) {
   const { user, role, orgId } = await getSessionProfile();
 
   if (!user) throw new Error("Usuário não autenticado.");
-  if (role !== "owner")
+  if (!isOwner(role))
     throw new Error("Apenas o proprietário pode alterar papéis.");
   if (!orgId) throw new Error("Organização não identificada.");
 
@@ -83,7 +96,7 @@ export async function deleteMemberAction(formData: FormData) {
   const { user, role, orgId } = await getSessionProfile();
 
   if (!user) throw new Error("Usuário não autenticado.");
-  if (role !== "owner")
+  if (!isOwner(role))
     throw new Error("Apenas o proprietário pode excluir membros.");
   if (!orgId) throw new Error("Organização não identificada.");
 
