@@ -9,26 +9,26 @@
  *   2️⃣ Execute: npx tsx scripts/scan-supabase-cookies.ts
  */
 
-import fs from 'fs'
-import path from 'path'
+import fs from "fs";
+import path from "path";
 
-const ROOT = path.resolve('src')
-const TARGETS = ['.ts', '.tsx', '.js', '.jsx']
+const ROOT = path.resolve("src");
+const TARGETS = [".ts", ".tsx", ".js", ".jsx"];
 
 interface Finding {
-  file: string
-  line: number
-  context: string
+  file: string;
+  line: number;
+  context: string;
 }
 
-const findings: Finding[] = []
+const findings: Finding[] = [];
 
 function scanFile(filePath: string) {
-  const content = fs.readFileSync(filePath, 'utf8')
-  const lines = content.split('\n')
+  const content = fs.readFileSync(filePath, "utf8");
+  const lines = content.split("\n");
 
   lines.forEach((line, i) => {
-    const l = line.trim()
+    const l = line.trim();
 
     // Casos mais comuns de leitura errada
     const patterns = [
@@ -38,52 +38,52 @@ function scanFile(filePath: string) {
       /auth-token/i,
       /document\.cookie/i,
       /base64-eyJ/i,
-    ]
+    ];
 
     if (patterns.some((r) => r.test(l))) {
       findings.push({
         file: filePath,
         line: i + 1,
         context: l,
-      })
+      });
     }
-  })
+  });
 }
 
 function walkDir(dir: string) {
   for (const item of fs.readdirSync(dir)) {
-    const fullPath = path.join(dir, item)
-    const stat = fs.statSync(fullPath)
+    const fullPath = path.join(dir, item);
+    const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      walkDir(fullPath)
+      walkDir(fullPath);
     } else if (TARGETS.some((ext) => fullPath.endsWith(ext))) {
-      scanFile(fullPath)
+      scanFile(fullPath);
     }
   }
 }
 
-console.log(`🔍 Escaneando ${ROOT} ...`)
-walkDir(ROOT)
+console.log(`🔍 Escaneando ${ROOT} ...`);
+walkDir(ROOT);
 
 if (findings.length === 0) {
-  console.log('\n✅ Nenhum acesso manual de cookies Supabase encontrado.\n')
+  console.log("\n✅ Nenhum acesso manual de cookies Supabase encontrado.\n");
 } else {
   console.log(
-    `\n⚠️  ${findings.length} possíveis leituras incorretas detectadas:\n`
-  )
+    `\n⚠️  ${findings.length} possíveis leituras incorretas detectadas:\n`,
+  );
   for (const f of findings) {
-    console.log(`📄 ${f.file}:${f.line}`)
-    console.log(`   → ${f.context}\n`)
+    console.log(`📄 ${f.file}:${f.line}`);
+    console.log(`   → ${f.context}\n`);
   }
 
-  console.log('💡 Corrija esses trechos para usar:')
+  console.log("💡 Corrija esses trechos para usar:");
   console.log(
-    '   const { data: { session } } = await supabase.auth.getSession();\n'
-  )
+    "   const { data: { session } } = await supabase.auth.getSession();\n",
+  );
 }
 
-console.log('🧠 Dica: adicione este script em seu package.json:')
+console.log("🧠 Dica: adicione este script em seu package.json:");
 console.log(
-  `   "scripts": { "scan:cookies": "tsx scripts/scan-supabase-cookies.ts" }`
-)
+  `   "scripts": { "scan:cookies": "tsx scripts/scan-supabase-cookies.ts" }`,
+);

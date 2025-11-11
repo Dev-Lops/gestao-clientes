@@ -129,6 +129,21 @@ create table if not exists public.app_media_items (
 
 alter table public.app_media_items enable row level security;
 
+-- Branding por cliente
+create table if not exists public.app_branding (
+  id uuid primary key default uuid_generate_v4(),
+  client_id uuid not null references public.app_clients(id) on delete cascade,
+  palette jsonb,
+  font_stack jsonb,
+  tone_of_voice jsonb,
+  archetype jsonb,
+  "references" jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
+alter table public.app_branding enable row level security;
+
 -- Convites
 create table if not exists public.app_invitations (
   id uuid primary key default uuid_generate_v4(),
@@ -145,6 +160,21 @@ create table if not exists public.app_invitations (
 );
 
 alter table public.app_invitations enable row level security;
+
+-- Pagamentos
+create table if not exists public.app_payments (
+  id uuid primary key default uuid_generate_v4(),
+  org_id uuid not null references public.app_orgs(id) on delete cascade,
+  client_id uuid not null references public.app_clients(id) on delete cascade,
+  amount numeric,
+  paid_at timestamptz,
+  method text,
+  notes text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now()
+);
+
+alter table public.app_payments enable row level security;
 
 -- Policies -------------------------------------------------------------
 

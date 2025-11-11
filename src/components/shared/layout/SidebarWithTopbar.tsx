@@ -71,7 +71,7 @@ export function SidebarWithTopbar({
       const res = await fetch("/api/auth/logout", { method: "POST" });
       if (!res.ok) throw new Error("Falha ao encerrar sessão");
     } finally {
-      router.replace("/auth/login");
+      router.replace("/login");
     }
   }
 

@@ -9,35 +9,33 @@ export default async function ClientTabsLayout({
 }: ClientTabsLayoutProps) {
   const { id } = await params;
   const base = `/clients/${id}`;
+
+  const tabs = [
+    { value: "info", label: "Informações", href: `${base}/info` },
+    { value: "tasks", label: "Tarefas", href: `${base}/tasks` },
+    { value: "branding", label: "Branding", href: `${base}/branding` },
+    { value: "media", label: "Mídias", href: `${base}/media` },
+    { value: "strategy", label: "Estratégia", href: `${base}/strategy` },
+    { value: "meetings", label: "Reuniões", href: `${base}/meetings` },
+    { value: "finance", label: "Financeiro", href: `${base}/finance` },
+    { value: "reports", label: "Relatórios", href: `${base}/reports` },
+  ] as const;
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Cliente</h1>
       <Tabs defaultValue="info">
         <TabsList className="flex flex-wrap gap-2">
-          <Link href={`${base}/info`}>
-            <TabsTrigger value="info">Informações</TabsTrigger>
-          </Link>
-          <Link href={`${base}/strategy`}>
-            <TabsTrigger value="strategy">Estratégia</TabsTrigger>
-          </Link>
-          <Link href={`${base}/branding`}>
-            <TabsTrigger value="branding">Branding</TabsTrigger>
-          </Link>
-          <Link href={`${base}/media`}>
-            <TabsTrigger value="media">Mídias</TabsTrigger>
-          </Link>
-          <Link href={`${base}/meetings`}>
-            <TabsTrigger value="meetings">Reuniões</TabsTrigger>
-          </Link>
-          <Link href={`${base}/finance`}>
-            <TabsTrigger value="finance">Financeiro</TabsTrigger>
-          </Link>
-          <Link href={`${base}/reports`}>
-            <TabsTrigger value="reports">Relatórios</TabsTrigger>
-          </Link>
+          {tabs.map((tab) => (
+            <Link key={tab.value} href={tab.href}>
+              <TabsTrigger value={tab.value}>{tab.label}</TabsTrigger>
+            </Link>
+          ))}
         </TabsList>
       </Tabs>
-      <p className="text-sm opacity-70">Escolha uma aba acima.</p>
+      <p className="text-sm opacity-70">
+        Escolha uma das seções acima para visualizar os detalhes do cliente.
+      </p>
     </div>
   );
 }

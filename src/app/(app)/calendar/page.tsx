@@ -110,10 +110,16 @@ export default function CalendarPage() {
         return;
       }
 
-      const normalized = (rows ?? []).map((r) => ({
-        ...r,
-        date: normalizeDate(r.event_date),
-      }));
+      const normalized = (rows ?? [])
+        .filter((row): row is typeof row & { event_date: string } => {
+          return (
+            typeof row.event_date === "string" && row.event_date.length > 0
+          );
+        })
+        .map((r) => ({
+          ...r,
+          date: normalizeDate(r.event_date),
+        }));
 
       setTable("app_content_calendar", normalized);
       setLoading(false);
@@ -196,7 +202,7 @@ export default function CalendarPage() {
 
     const newEvent = {
       ...data[0],
-      date: normalizeDate(data[0].event_date),
+      date: normalizeDate(data[0].event_date ?? new Date().toISOString()),
     };
 
     setTable("app_content_calendar", [

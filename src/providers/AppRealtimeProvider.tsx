@@ -1,16 +1,17 @@
 "use client";
 
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { deriveOrgClientStats } from "@/services/analytics/client-stats";
 import { fetchInitialData } from "@/services/repositories/realtime";
 import { useAppStore } from "@/store/appStore";
-import type { SyncedTable, TableMap } from "@/types/tables";
+import type { AppClient, SyncedTable, TableMap } from "@/types/tables";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 const TABLES: SyncedTable[] = [
   "app_clients",
   "app_tasks",
   "app_content_calendar",
-  "org_client_stats",
 ];
 
 type TableDataMap = {
@@ -25,6 +26,10 @@ export function AppRealtimeProvider({
   children: ReactNode;
 }) {
   const setOrgId = useAppStore((s) => s.setOrgId);
+  const setTable = useAppStore((s) => s.setTable);
+  const clients = useAppStore(
+    (s) => s.tables.app_clients as AppClient[] | undefined,
+  );
   const [initialData, setInitialData] = useState<Partial<TableDataMap>>({});
 
   useEffect(() => {
@@ -50,29 +55,36 @@ export function AppRealtimeProvider({
   useRealtimeSync({
     table: "app_clients",
     orgId,
-    initialData: initialData.app_clients ?? [],
+    initialData: initialData.app_clients,
   });
 
   useRealtimeSync({
     table: "app_tasks",
     orgId,
-    initialData: initialData.app_tasks ?? [],
+    initialData: initialData.app_tasks,
   });
 
   useRealtimeSync({
     table: "app_content_calendar",
     orgId,
-    initialData: initialData.app_content_calendar ?? [],
+    initialData: initialData.app_content_calendar,
   });
 
-  useRealtimeSync({
-    table: "org_client_stats",
-    orgId,
-    initialData: initialData.org_client_stats ?? [],
-  });
+  useEffect(() => {
+    if (!orgId) return;
+    if (!Array.isArray(clients)) return;
+
+    const stats = deriveOrgClientStats(orgId, clients);
+    setTable("org_client_stats", [stats]);
+  }, [clients, orgId, setTable]);
 
   if (!Object.keys(initialData).length) {
-    return <div className="p-4 text-center">Carregando dados...</div>;
+    return (
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-3 text-slate-500">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        <p className="text-sm">Sincronizando dados da organização…</p>
+      </div>
+    );
   }
 
   return <>{children}</>;

@@ -247,6 +247,8 @@ export default function ClientMediaPage() {
     newMediaParams.set("sub", subfolder);
   }
 
+  const canManageFiles = sessionInfo?.role === "owner";
+
   return (
     <div className="mx-auto max-w-6xl space-y-10 rounded-3xl border border-slate-200 bg-white p-10 shadow-xl">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b pb-6">
@@ -260,25 +262,27 @@ export default function ClientMediaPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setOpenModal(true)}
-            className="flex items-center gap-2 border-slate-300"
-          >
-            <FolderPlus className="h-4 w-4" /> Nova Pasta
-          </Button>
-          <Button
-            asChild
-            className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            <Link
-              href={`/clients/${clientId}/media/new?${newMediaParams.toString()}`}
+        {canManageFiles ? (
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setOpenModal(true)}
+              className="flex items-center gap-2 border-slate-300"
             >
-              <Plus className="h-4 w-4" /> Nova Mídia
-            </Link>
-          </Button>
-        </div>
+              <FolderPlus className="h-4 w-4" /> Nova Pasta
+            </Button>
+            <Button
+              asChild
+              className="flex items-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              <Link
+                href={`/clients/${clientId}/media/new?${newMediaParams.toString()}`}
+              >
+                <Plus className="h-4 w-4" /> Nova Mídia
+              </Link>
+            </Button>
+          </div>
+        ) : null}
       </header>
 
       {folders.length > 0 && (
@@ -317,7 +321,12 @@ export default function ClientMediaPage() {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => (
-            <MediaCard key={item.id} item={item} />
+            <MediaCard
+              key={item.id}
+              item={item}
+              clientId={clientId}
+              canDelete={canManageFiles}
+            />
           ))}
         </div>
       )}
@@ -349,7 +358,15 @@ export default function ClientMediaPage() {
   );
 }
 
-function MediaCard({ item }: { item: MediaItem }) {
+function MediaCard({
+  item,
+  clientId,
+  canDelete,
+}: {
+  item: MediaItem;
+  clientId: string;
+  canDelete: boolean;
+}) {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [url, setUrl] = useState("");
   const [loadingPreview, setLoadingPreview] = useState(true);
@@ -438,7 +455,11 @@ function MediaCard({ item }: { item: MediaItem }) {
             </a>
           </Button>
           {item.file_path ? (
-            <DeleteMediaButton itemId={item.id} filePath={item.file_path} />
+            <DeleteMediaButton
+              itemId={item.id}
+              clientId={clientId}
+              canDelete={canDelete}
+            />
           ) : null}
         </div>
       </div>

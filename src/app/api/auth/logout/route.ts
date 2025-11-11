@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   const redirectUrl = new URL(
-    "/auth/login",
+    "/login",
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   );
 

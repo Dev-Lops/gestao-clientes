@@ -18,7 +18,10 @@ export function DeleteTaskButton({
   async function handleDelete() {
     startTransition(async () => {
       try {
-        await deleteTask(id, clientId);
+        const formData = new FormData();
+        formData.append("id", id);
+        formData.append("clientId", clientId);
+        await deleteTask(formData);
         toast.success("Tarefa removida!");
       } catch (err) {
         toast.error("Erro ao deletar tarefa.");
