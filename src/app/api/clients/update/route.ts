@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { can } from "@/services/auth/rbac";
 import { getSessionProfile } from "@/services/auth/session";
 
 export async function POST(req: Request) {
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!(isOwner(session.role) || isStaffOrAbove(session.role))) {
+    if (!can(session.role, "staff")) {
       return NextResponse.json(
         { message: "Permissão insuficiente para atualizar cliente." },
         { status: 403 },

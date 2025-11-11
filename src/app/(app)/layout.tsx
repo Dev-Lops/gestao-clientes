@@ -1,7 +1,7 @@
 import { SidebarWithTopbar } from "@/components/shared/layout/SidebarWithTopbar";
 import RealtimeWrapper from "@/components/shared/RealtimeWrapper";
 import { getSessionProfile } from "@/services/auth/session";
-import type { AppRole } from "@/services/auth/rbac";
+import type { Role } from "@/services/auth/rbac";
 import { redirect } from "next/navigation";
 
 /**
@@ -23,19 +23,16 @@ export default async function AppLayout({
   if (!orgId) redirect("/setup");
 
   // 🔹 Roles válidos no painel
-  const allowedRoles: AppRole[] = ["owner", "staff", "client"];
-  const fallbackRole: AppRole = "client";
-  const normalizedRole = role ?? fallbackRole;
-  const effectiveRole: AppRole = allowedRoles.includes(normalizedRole)
-    ? normalizedRole
-    : fallbackRole;
+  const allowedRoles: Role[] = ["owner", "staff", "client"];
+  const fallbackRole: Role = "client";
+  const effectiveRole: Role =
+    role && allowedRoles.includes(role as Role) ? (role as Role) : fallbackRole;
+
+  const displayName = user.email ?? "Usuário";
 
   return (
     <RealtimeWrapper orgId={orgId}>
-      <SidebarWithTopbar
-        role={effectiveRole}
-        userName={user.user_metadata?.full_name ?? user.email ?? "Usuário"}
-      >
+      <SidebarWithTopbar role={effectiveRole} userName={displayName}>
         {children}
       </SidebarWithTopbar>
     </RealtimeWrapper>

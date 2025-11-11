@@ -10,7 +10,7 @@ const config: Config = {
   setupFilesAfterEnv: ["<rootDir>/tests/setupTests.ts"],
   collectCoverageFrom: [
     "src/config/env.ts",
-    "src/services/auth/session-utils.ts",
+    "src/services/auth/session.ts",
     "src/store/appStore.ts",
   ],
   coverageThreshold: {

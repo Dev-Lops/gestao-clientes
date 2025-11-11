@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
 
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { can } from "@/services/auth/rbac";
 import { getSessionProfile } from "@/services/auth/session";
 
 import type { AppClient } from "@/types/tables";
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     );
   }
 
-  if (!(isOwner(session.role) || isStaffOrAbove(session.role))) {
+  if (!can(session.role, "staff")) {
     return NextResponse.json(
       { ok: false, message: "Permissão insuficiente para criar clientes." },
       { status: 403 },

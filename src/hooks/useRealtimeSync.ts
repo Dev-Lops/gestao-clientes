@@ -1,4 +1,4 @@
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useAppStore } from "@/store/appStore";
 import type { SyncedTable, TableMap } from "@/types/tables";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
