@@ -1,6 +1,8 @@
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { getSessionProfile } from "@/services/auth/session";
 import { NextResponse } from "next/server";
+
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { getSessionProfile } from "@/services/auth/session";
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +28,13 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { message: "ID do cliente não informado." },
         { status: 400 },
+      );
+    }
+
+    if (!(isOwner(session.role) || isStaffOrAbove(session.role))) {
+      return NextResponse.json(
+        { message: "Permissão insuficiente para atualizar cliente." },
+        { status: 403 },
       );
     }
 
@@ -55,14 +64,13 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json(
-        { message: `Erro ao atualizar cliente: ${error.message}` },
+        { message: "Não foi possível atualizar o cliente." },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error("❌ Erro inesperado:", err);
+  } catch {
     return NextResponse.json(
       { message: "Erro interno no servidor." },
       { status: 500 },

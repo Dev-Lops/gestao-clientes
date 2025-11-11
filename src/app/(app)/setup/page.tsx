@@ -1,12 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState } from "react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
+
+import { createOrganizationAction } from "./actions";
 
 type SetupStep = "checking" | "form" | "done";
 
@@ -16,90 +18,55 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<SetupStep>("checking");
 
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-
   useEffect(() => {
     let isActive = true;
 
-    async function checkUser() {
-      const { data } = await supabase.auth.getUser();
-      if (!isActive) return;
+    async function checkSession() {
+      try {
+        const response = await fetch("/api/session", {
+          credentials: "include",
+        });
+        if (!isActive) return;
 
-      const user = data.user;
-      if (!user) {
+        if (response.status === 401) {
+          router.replace("/login");
+          return;
+        }
+
+        const data = (await response.json()) as { orgId: string | null };
+        if (data.orgId) {
+          router.replace("/dashboard");
+          return;
+        }
+
+        setStep("form");
+      } catch {
         router.replace("/login");
-        return;
       }
-
-      if (user.user_metadata?.org_id) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      setStep("form");
     }
 
-    void checkUser();
+    void checkSession();
 
     return () => {
       isActive = false;
     };
-  }, [router, supabase]);
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
 
     try {
-      const { data } = await supabase.auth.getUser();
-      const user = data.user;
-
-      if (!user) {
-        toast.error("Usuário não autenticado.");
-        router.push("/login");
-        return;
-      }
-
-      const { data: org, error: orgError } = await supabase
-        .from("app_orgs")
-        .insert({
-          name: orgName || "Minha Organização",
-          owner_user_id: user.id,
-        })
-        .select("id")
-        .single();
-
-      if (orgError || !org) {
-        console.error("Erro ao criar organização:", orgError);
-        toast.error("Erro ao criar organização.");
-        return;
-      }
-
-      const { error: memberError } = await supabase.from("app_members").insert({
-        user_id: user.id,
-        org_id: org.id,
-        role: "owner",
-        status: "active",
-        full_name: user.user_metadata?.full_name ?? "Proprietário",
-      });
-
-      if (memberError) {
-        console.error("Erro ao criar membro:", memberError);
-        toast.error("Erro ao criar membro.");
-        return;
-      }
-
-      await supabase.auth.updateUser({
-        data: { org_id: org.id, role: "owner" },
-      });
-      await supabase.auth.refreshSession();
-
+      await createOrganizationAction(orgName);
       toast.success("Organização criada com sucesso!");
       setStep("done");
       setTimeout(() => router.replace("/dashboard"), 1500);
     } catch (error) {
-      console.error("Erro inesperado ao configurar organização:", error);
-      toast.error("Erro inesperado. Tente novamente.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro inesperado. Tente novamente.",
+      );
     } finally {
       setLoading(false);
     }

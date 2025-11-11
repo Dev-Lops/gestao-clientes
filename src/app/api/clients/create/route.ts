@@ -1,9 +1,11 @@
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { getSessionProfile } from "@/services/auth/session";
+import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
 
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { isOwner, isStaffOrAbove } from "@/services/auth/rbac";
+import { getSessionProfile } from "@/services/auth/session";
+
 import type { AppClient } from "@/types/tables";
-import { NextResponse } from "next/server";
 
 const schema = z.object({
   name: z.string().min(3),
@@ -34,6 +36,13 @@ export async function POST(req: Request) {
     );
   }
 
+  if (!(isOwner(session.role) || isStaffOrAbove(session.role))) {
+    return NextResponse.json(
+      { ok: false, message: "Permissão insuficiente para criar clientes." },
+      { status: 403 },
+    );
+  }
+
   try {
     const payload = schema.parse(await req.json());
     const adminClient = createSupabaseServiceRoleClient();
@@ -57,7 +66,7 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json(
-        { ok: false, message: error.message },
+        { ok: false, message: "Não foi possível criar o cliente." },
         { status: 500 },
       );
     }
@@ -76,7 +85,7 @@ export async function POST(req: Request) {
 
     if (error instanceof Error) {
       return NextResponse.json(
-        { ok: false, message: error.message },
+        { ok: false, message: "Erro interno ao criar cliente." },
         { status: 500 },
       );
     }

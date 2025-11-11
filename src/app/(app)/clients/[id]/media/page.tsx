@@ -46,7 +46,6 @@ type MediaFolder = {
   owner_user_id?: string | null;
 };
 
-
 export default function ClientMediaPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -61,6 +60,41 @@ export default function ClientMediaPage() {
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [sessionInfo, setSessionInfo] = useState<{
+    orgId: string | null;
+    role: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSession() {
+      try {
+        const response = await fetch("/api/session", {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as {
+          orgId: string | null;
+          role: string | null;
+        };
+        if (!cancelled) {
+          setSessionInfo(data);
+        }
+      } catch {
+        // ignora: fallback para RLS
+      }
+    }
+
+    void loadSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,7 +199,7 @@ export default function ClientMediaPage() {
         return;
       }
 
-      const orgId = (user.user_metadata as { org_id?: string } | null)?.org_id;
+      const orgId = sessionInfo?.orgId;
       if (!orgId) {
         toast.error("Erro ao identificar organização.");
         return;
@@ -193,7 +227,6 @@ export default function ClientMediaPage() {
       setOpenModal(false);
       setFolders((previous) => (data ? [...previous, data] : previous));
     } catch (error) {
-      console.error("Erro ao criar pasta:", error);
       toast.error(
         error instanceof Error ? error.message : "Erro ao criar pasta.",
       );

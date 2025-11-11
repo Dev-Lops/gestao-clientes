@@ -24,6 +24,7 @@ import { ClientProgressCard } from "@/features/clients/components/ClientProgress
 import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBadge";
 import { DeleteClientButton } from "@/features/clients/components/DeleteClientButton";
 import { EditClientDialog } from "@/features/clients/components/EditClientDialog";
+import { InviteClientDialog } from "@/features/clients/components/InviteClientDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AppClient } from "@/types/tables";
 import { ClientStatus } from "@/types/client";
@@ -84,6 +85,8 @@ export default function ClientInfoPageClient({
 
   const progress = client.progress ?? 0;
 
+  const canManageClient = userRole === "owner" || userRole === "staff";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -113,12 +116,17 @@ export default function ClientInfoPageClient({
             </Button>
           </Link>
 
-          <Button
-            onClick={() => setOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
-          >
-            <Settings className="h-4 w-4" /> Editar
-          </Button>
+          {canManageClient && (
+            <>
+              <Button
+                onClick={() => setOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+              >
+                <Settings className="h-4 w-4" /> Editar
+              </Button>
+              <InviteClientDialog clientId={id} clientName={client.name} />
+            </>
+          )}
 
           <Link href={`/clients/${id}/media`}>
             <Button className="flex items-center gap-2 bg-slate-900 text-white hover:bg-slate-700">
@@ -144,7 +152,6 @@ export default function ClientInfoPageClient({
           </p>
           <div className="mt-2">
             <ClientStatusBadge status={client.status as ClientStatus | null} />
-
           </div>
         </Card>
 
