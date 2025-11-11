@@ -1,6 +1,5 @@
 "use client";
 
-import { DeleteMediaButton } from "@/features/media/components/DeleteMediaButton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DeleteMediaButton } from "@/features/media/components/DeleteMediaButton";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   Clock,
@@ -40,8 +40,12 @@ type MediaFolder = {
   name: string;
   parent_folder: string | null;
   created_at: string | null;
-  client_id: string;
+  client_id: string | null; // ✅ corrigido
+  org_id?: string | null;
+  created_by?: string | null;
+  owner_user_id?: string | null;
 };
+
 
 export default function ClientMediaPage() {
   const params = useParams<{ id: string }>();

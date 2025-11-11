@@ -1,11 +1,11 @@
 // ✅ app/(app)/clients/[id]/tasks/page.tsx
 
-import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { DeleteTaskButton } from "@/features/tasks/components/DeleteTaskButton";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 import { getSessionProfile } from "@/services/auth/session";
 import { redirect } from "next/navigation";
 import { createTask, toggleTask } from "./actions";
@@ -30,10 +30,14 @@ type Task = {
 ---------------------------------------------------------- */
 export default async function TasksPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ status?: string }>;
 }) {
   const { id: clientId } = await params;
+  const statusFilter = (await searchParams)?.status ?? "all";
+
   const { user } = await getSessionProfile();
   if (!user) redirect("/login");
 
@@ -49,17 +53,23 @@ export default async function TasksPage({
 
   const canManage = client.created_by === user.id;
 
-  const { data: tasks } = await supabase
+  // Query de tasks
+  let query = supabase
     .from("app_tasks")
     .select("id,title,status,due_date,urgency,client_id")
     .eq("client_id", clientId)
     .order("urgency", { ascending: false })
-    .order("due_date", { ascending: true })
-    .returns<Task[]>();
+    .order("due_date", { ascending: true });
+
+  if (statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
+  }
+
+  const { data: tasks } = await query.returns<Task[]>();
 
   const totalTasks = tasks?.length ?? 0;
   const completedTasks = (tasks ?? []).filter(
-    (task) => task.status === "done",
+    (task) => task.status === "done"
   ).length;
   const pendingTasks = Math.max(totalTasks - completedTasks, 0);
   const pct =
@@ -89,6 +99,41 @@ export default async function TasksPage({
           {completedTasks} de {totalTasks} concluídas • {pendingTasks} pendentes
           ({pct}%)
         </Badge>
+      </div>
+
+      {/* Barra de progresso */}
+      <div className="relative h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+        <div
+          className={cn(
+            "h-full transition-all duration-500 bg-gradient-to-r from-indigo-500 to-indigo-700",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+
+      {/* Abas de filtro */}
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { key: "all", label: "Todas" },
+          { key: "todo", label: "A Fazer" },
+          { key: "doing", label: "Em andamento" },
+          { key: "done", label: "Concluídas" },
+          { key: "blocked", label: "Bloqueadas" },
+        ].map((tab) => (
+          <a
+            key={tab.key}
+            href={`?status=${tab.key}`}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
+              statusFilter === tab.key
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            )}
+          >
+            {tab.label}
+          </a>
+        ))}
       </div>
 
       {/* Criar tarefa */}
@@ -174,7 +219,7 @@ export default async function TasksPage({
               key={t.id}
               className={cn(
                 "flex items-center justify-between p-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 bg-white/80 backdrop-blur-sm border border-slate-200",
-                urgencyColor,
+                urgencyColor
               )}
             >
               <div className="flex items-center gap-4">
@@ -191,7 +236,7 @@ export default async function TasksPage({
                         "rounded-full w-7 h-7 flex items-center justify-center text-xs font-medium",
                         t.status === "done"
                           ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "hover:bg-slate-100",
+                          : "hover:bg-slate-100"
                       )}
                     >
                       {t.status === "done" ? "✓" : "○"}
@@ -201,7 +246,7 @@ export default async function TasksPage({
                 <div
                   className={cn(
                     "text-sm font-medium text-slate-800",
-                    t.status === "done" && "line-through text-slate-500",
+                    t.status === "done" && "line-through text-slate-500"
                   )}
                 >
                   {t.title}
@@ -216,9 +261,7 @@ export default async function TasksPage({
                       : `Prazo: ${new Date(t.due_date).toLocaleDateString("pt-BR")}`}
                   </span>
                 )}
-                {canManage && (
-                  <DeleteTaskButton id={t.id} clientId={clientId} />
-                )}
+                {canManage && <DeleteTaskButton id={t.id} clientId={clientId} />}
               </div>
             </Card>
           );
@@ -227,8 +270,8 @@ export default async function TasksPage({
         {/* Nenhuma tarefa */}
         {(!tasks || tasks.length === 0) && (
           <Card className="p-6 text-sm text-slate-500 text-center bg-white/70 border border-slate-200 rounded-xl shadow-sm">
-            Nenhuma tarefa criada ainda. <br />
-            <span className="text-slate-400">Adicione a primeira acima 👆</span>
+            Nenhuma tarefa encontrada nesse filtro. <br />
+            <span className="text-slate-400">Adicione ou troque de aba 👆</span>
           </Card>
         )}
       </div>

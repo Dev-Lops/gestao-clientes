@@ -1,10 +1,11 @@
 // ✅ app/(app)/clients/page.tsx
-import { StatusBadge } from "@/features/clients/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { StatusBadge } from "@/features/clients/components/StatusBadge";
+import { formatDate } from "@/lib/utils";
 import { getSessionProfile } from "@/services/auth/session";
 import { listClientsByOrg } from "@/services/repositories/clients";
-import { formatDate } from "@/lib/utils";
+import { ClientStatus } from "@/types/client";
 import type { AppClient } from "@/types/tables";
 import Link from "next/link";
 
@@ -87,7 +88,10 @@ export default async function ClientsPage() {
                   <h3 className="font-semibold text-lg text-slate-900">
                     {client.name}
                   </h3>
-                  <StatusBadge status={client.status} />
+                  <StatusBadge status={client.status as ClientStatus} />
+
+
+
                 </div>
 
                 <p className="text-sm text-slate-500">

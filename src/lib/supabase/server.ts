@@ -1,59 +1,89 @@
-import "server-only";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
-import type { Database } from "@/types/supabase";
 import {
-  SUPABASE_URL,
   SUPABASE_ANON_KEY,
   SUPABASE_SERVICE_ROLE_KEY,
-} from "@/config/env";
+  SUPABASE_URL,
+} from '@/config/env'
+import type { Database } from '@/types/supabase'
+import { createServerClient } from '@supabase/ssr'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
+import 'server-only'
 
-export type SupabaseServerClient = SupabaseClient<Database>;
-export type SupabaseServiceRoleClient = SupabaseClient<Database>;
+export type SupabaseServerClient = SupabaseClient<Database>
+export type SupabaseServiceRoleClient = SupabaseClient<Database>
 
-function assertSupabaseUrl() {
-  if (!SUPABASE_URL) throw new Error("SUPABASE_URL não configurado.");
-  if (!SUPABASE_ANON_KEY) throw new Error("SUPABASE_ANON_KEY não configurado.");
+function assertSupabaseEnv() {
+  if (!SUPABASE_URL) throw new Error('SUPABASE_URL não configurado.')
+  if (!SUPABASE_ANON_KEY) throw new Error('SUPABASE_ANON_KEY não configurado.')
 }
 
+if (process.env.NODE_ENV === 'development') {
+  console.log(
+    '🧩 SERVICE ROLE TESTE:',
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? 'ENCONTRADA ✅'
+      : 'NÃO ENCONTRADA ❌'
+  )
+}
+
+/**
+ * 🔹 Para uso em Server Components (SSR)
+ */
+/**
+ * 🔹 Para uso em Server Components (SSR)
+ */
 export async function createSupabaseServerClient(): Promise<SupabaseServerClient> {
-  assertSupabaseUrl();
-  const cookieStore = await cookies();
+  assertSupabaseEnv()
+  const cookieStore = await cookies() // ✅ agora é await
 
   return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
-      get: (name: string) => cookieStore.get(name)?.value,
-      set() {},
-      remove() {},
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        console.warn(
+          '⚠️ Tentativa de modificar cookies fora de Route Handler (ignorado):',
+          cookiesToSet.map((c) => c.name)
+        )
+      },
     },
-  });
+  })
 }
 
+/**
+ * 🔹 Para uso em Route Handlers (com NextResponse)
+ */
 export async function createSupabaseRouteHandlerClient(
-  response: NextResponse,
+  response: NextResponse
 ): Promise<SupabaseServerClient> {
-  assertSupabaseUrl();
-  const cookieStore = await cookies();
+  assertSupabaseEnv()
+  const cookieStore = await cookies() // ✅ idem
 
   return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
-      get: (name: string) => cookieStore.get(name)?.value,
-      set: (name: string, value: string, options: CookieOptions) =>
-        response.cookies.set({ name, value, ...options }),
-      remove: (name: string, options: CookieOptions) =>
-        response.cookies.set({ name, value: "", ...options, maxAge: 0 }),
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        for (const { name, value, options } of cookiesToSet) {
+          response.cookies.set({ name, value, ...options })
+        }
+      },
     },
-  });
+  })
 }
 
+/**
+ * 🔹 Client com Service Role — ignora RLS (uso controlado)
+ */
 export function createSupabaseServiceRoleClient(): SupabaseServiceRoleClient {
-  assertSupabaseUrl();
+  assertSupabaseEnv()
   if (!SUPABASE_SERVICE_ROLE_KEY)
-    throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurado.");
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY não configurado.')
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('⚠️ createSupabaseServiceRoleClient usado (ignora RLS).')
+  }
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
-  });
+  })
 }

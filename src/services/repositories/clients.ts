@@ -1,185 +1,169 @@
 import {
   createSupabaseServerClient,
   createSupabaseServiceRoleClient,
-} from "@/lib/supabase/server";
-import type { AppClient } from "@/types/tables";
+} from '@/lib/supabase/server'
+import type { AppClient } from '@/types/tables'
 
 export interface CreateClientInput {
-  orgId: string;
-  createdBy: string;
-  name: string;
-  status?: AppClient["status"];
-  plan?: string | null;
-  mainChannel?: string | null;
-  accountManager?: string | null;
-  paymentStatus?: string | null;
-  paymentMethod?: string | null;
-  monthlyTicket?: number | null;
-  billingDay?: number | null;
-  startDate?: string | null;
-  nextDelivery?: string | null;
-  lastMeetingAt?: string | null;
-  progress?: number | null;
-  internalNotes?: string | null;
+  orgId: string
+  createdBy: string
+  name: string
+  status?: AppClient['status']
+  plan?: string | null
+  mainChannel?: string | null
+  accountManager?: string | null
+  paymentStatus?: string | null
+  paymentMethod?: string | null
+  monthlyTicket?: number | null
+  billingDay?: number | null
+  startDate?: string | null
+  nextDelivery?: string | null
+  lastMeetingAt?: string | null
+  progress?: number | null
+  internalNotes?: string | null
 }
 
-const CLIENT_COLUMNS =
-  "id, org_id, name, status, plan, main_channel, created_at, payment_status, monthly_ticket, account_manager";
+const CLIENT_COLUMNS = `
+  id, org_id, name, status, plan, main_channel, account_manager,
+  payment_status, payment_method, billing_day, monthly_ticket,
+  start_date, next_delivery, last_meeting_at, progress, internal_notes,
+  created_at, created_by
+`
 
+// 🔹 Lista clientes de uma organização
 export async function listClientsByOrg(orgId: string): Promise<AppClient[]> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
-    .from("app_clients")
+    .from('app_clients')
     .select(CLIENT_COLUMNS)
-    .eq("org_id", orgId)
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false })
+    .limit(50)
 
-  if (error) {
-    throw new Error(`Erro ao buscar clientes: ${error.message}`);
-  }
-
-  return (data ?? []) as AppClient[];
+  if (error) throw new Error(`Erro ao buscar clientes: ${error.message}`)
+  return (data ?? []) as AppClient[]
 }
 
+// 🔹 Cria cliente (usado na server action)
 export async function createClientRecord(input: CreateClientInput) {
-  const supabase = createSupabaseServiceRoleClient();
+  if (!input.orgId?.trim() || !input.createdBy?.trim()) {
+    throw new Error('Organização e usuário são obrigatórios.')
+  }
+  if (!input.name?.trim()) {
+    throw new Error('O nome do cliente é obrigatório.')
+  }
+
+  const supabase = createSupabaseServiceRoleClient()
+
+  console.log(`🔑 Criando cliente para org: ${input.orgId}`)
+
+  const payload = {
+    org_id: input.orgId,
+    created_by: input.createdBy,
+    name: input.name.trim(),
+    status: input.status ?? 'new',
+    plan: input.plan ?? null,
+    main_channel: input.mainChannel ?? null,
+    account_manager: input.accountManager ?? null,
+    payment_status: input.paymentStatus ?? null,
+    payment_method: input.paymentMethod ?? null,
+    monthly_ticket: input.monthlyTicket ?? null,
+    billing_day: input.billingDay ?? null,
+    start_date: input.startDate ?? null,
+    next_delivery: input.nextDelivery ?? null,
+    last_meeting_at: input.lastMeetingAt ?? null,
+    progress: input.progress ?? 0,
+    internal_notes: input.internalNotes ?? null,
+  }
+
   const { data, error } = await supabase
-    .from("app_clients")
-    .insert({
-      org_id: input.orgId,
-      created_by: input.createdBy,
-      name: input.name,
-      status: input.status ?? "new",
-      plan: input.plan,
-      main_channel: input.mainChannel,
-      account_manager: input.accountManager,
-      payment_status: input.paymentStatus,
-      payment_method: input.paymentMethod,
-      monthly_ticket: input.monthlyTicket,
-      billing_day: input.billingDay,
-      start_date: input.startDate,
-      next_delivery: input.nextDelivery,
-      last_meeting_at: input.lastMeetingAt,
-      progress: input.progress,
-      internal_notes: input.internalNotes,
-    })
+    .from('app_clients')
+    .insert([payload])
     .select(CLIENT_COLUMNS)
-    .single();
+    .single<AppClient>()
 
   if (error) {
-    throw new Error(`Erro ao criar cliente: ${error.message}`);
+    console.error('❌ Erro ao criar cliente no Supabase:', error)
+    throw new Error(`Erro ao criar cliente: ${error.message}`)
   }
 
-  return data as AppClient;
+  console.log('✅ Cliente criado com sucesso:', data)
+  return data
 }
 
-export async function deleteClientById(params: {
-  orgId: string;
-  clientId: string;
-}) {
-  const supabase = createSupabaseServiceRoleClient();
+// 🔹 Buscar 1 cliente da org
+export async function getClientById(orgId: string, clientId: string) {
+  const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
-    .from("app_clients")
-    .delete()
-    .eq("id", params.clientId)
-    .eq("org_id", params.orgId)
-    .select("id")
-    .maybeSingle();
+    .from('app_clients')
+    .select(CLIENT_COLUMNS)
+    .eq('id', clientId)
+    .eq('org_id', orgId)
+    .maybeSingle()
 
   if (error) {
-    throw new Error(`Erro ao excluir cliente: ${error.message}`);
+    throw new Error(`Erro ao carregar cliente: ${error.message}`)
   }
 
-  if (!data) {
-    throw new Error("Cliente não encontrado na organização informada.");
-  }
+  return data as AppClient | null
 }
 
-export async function removeClientAccess(params: {
-  orgId: string;
-  clientId: string;
-}) {
-  const supabase = createSupabaseServiceRoleClient();
-  const { data: client, error } = await supabase
-    .from("app_clients")
-    .select("id, member_id")
-    .eq("id", params.clientId)
-    .eq("org_id", params.orgId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Erro ao consultar cliente: ${error.message}`);
-  }
-
-  if (!client) {
-    throw new Error("Cliente não encontrado");
-  }
-
-  if (client.member_id) {
-    const { error: memberError } = await supabase
-      .from("app_members")
-      .delete()
-      .eq("id", client.member_id)
-      .eq("org_id", params.orgId);
-
-    if (memberError) {
-      throw new Error(`Erro ao remover membro: ${memberError.message}`);
-    }
-  }
-
-  const { error: updateError } = await supabase
-    .from("app_clients")
-    .update({ invited_email: null, member_id: null })
-    .eq("id", params.clientId)
-    .eq("org_id", params.orgId);
-
-  if (updateError) {
-    throw new Error(`Erro ao limpar convite: ${updateError.message}`);
-  }
-}
-
+// 🔹 Atualizar cliente
 export async function updateClientById(
   orgId: string,
   clientId: string,
   payload: Partial<
     Pick<
       AppClient,
-      | "name"
-      | "status"
-      | "plan"
-      | "main_channel"
-      | "account_manager"
-      | "payment_status"
+      | 'name'
+      | 'status'
+      | 'plan'
+      | 'main_channel'
+      | 'account_manager'
+      | 'payment_status'
+      | 'payment_method'
+      | 'billing_day'
+      | 'next_delivery'
+      | 'last_meeting_at'
+      | 'internal_notes'
+      | 'progress'
     >
-  >,
+  >
 ) {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = createSupabaseServiceRoleClient()
   const { error } = await supabase
-    .from("app_clients")
+    .from('app_clients')
     .update(payload)
-    .eq("id", clientId)
-    .eq("org_id", orgId);
+    .eq('id', clientId)
+    .eq('org_id', orgId)
 
   if (error) {
-    throw new Error(`Erro ao atualizar cliente: ${error.message}`);
+    throw new Error(`Erro ao atualizar cliente: ${error.message}`)
   }
 }
 
-export async function getClientById(orgId: string, clientId: string) {
-  const supabase = await createSupabaseServerClient();
+// 🔹 🚮 Remover cliente (com checagem de org)
+export async function deleteClientById(params: {
+  orgId: string
+  clientId: string
+}) {
+  const supabase = createSupabaseServiceRoleClient()
+
   const { data, error } = await supabase
-    .from("app_clients")
-    .select(
-      "id, org_id, name, status, plan, main_channel, account_manager, payment_status, payment_method, billing_day, monthly_ticket, start_date, next_delivery, last_meeting_at, progress, internal_notes",
-    )
-    .eq("id", clientId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+    .from('app_clients')
+    .delete()
+    .eq('id', params.clientId)
+    .eq('org_id', params.orgId)
+    .select('id')
+    .maybeSingle()
 
   if (error) {
-    throw new Error(`Erro ao carregar cliente: ${error.message}`);
+    console.error('❌ Erro ao excluir cliente:', error)
+    throw new Error(`Erro ao excluir cliente: ${error.message}`)
   }
 
-  return data as AppClient | null;
+  if (!data) {
+    // isso ajuda quando alguém tenta deletar um cliente de outra org
+    throw new Error('Cliente não encontrado na organização informada.')
+  }
 }

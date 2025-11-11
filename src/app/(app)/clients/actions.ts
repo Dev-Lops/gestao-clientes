@@ -1,42 +1,63 @@
-"use server";
+'use server'
 
-import { getSessionProfile } from "@/services/auth/session";
-import { deleteClientById } from "@/services/repositories/clients";
-import { revalidatePath } from "next/cache";
+import { getSessionProfile } from '@/services/auth/session'
+import { deleteClientById } from '@/services/repositories/clients'
+import { revalidatePath } from 'next/cache'
 
-export async function deleteClientAction(formData: FormData) {
-  const session = await getSessionProfile();
+interface DeleteClientResponse {
+  success: boolean
+  message: string
+}
 
-  // 🔸 Valida autenticação e permissão
-  if (!session.user) {
-    return { success: false, message: "Usuário não autenticado." };
-  }
-
-  if (session.role !== "owner" || !session.orgId) {
-    return {
-      success: false,
-      message: "Apenas o proprietário pode excluir clientes.",
-    };
-  }
-
-  // 🔸 Valida ID do cliente
-  const clientId = formData.get("client_id");
-  if (typeof clientId !== "string" || !clientId.trim()) {
-    return { success: false, message: "ID do cliente ausente ou inválido." };
-  }
-
+export async function deleteClientAction(
+  formData: FormData
+): Promise<DeleteClientResponse> {
   try {
-    await deleteClientById({ orgId: session.orgId, clientId });
-  } catch (error) {
-    console.error("❌ Erro ao excluir cliente:", error);
+    // 🔹 Recupera sessão e valida
+    const session = await getSessionProfile()
+
+    if (!session.user) {
+      return { success: false, message: 'Usuário não autenticado.' }
+    }
+
+    if (session.role !== 'owner') {
+      return {
+        success: false,
+        message: 'Apenas o proprietário pode excluir clientes.',
+      }
+    }
+
+    if (!session.orgId) {
+      return {
+        success: false,
+        message: 'Organização não vinculada ao usuário.',
+      }
+    }
+
+    // 🔹 Valida ID do cliente
+    const clientId = formData.get('client_id')
+    if (typeof clientId !== 'string' || !clientId.trim()) {
+      return { success: false, message: 'ID do cliente ausente ou inválido.' }
+    }
+
+    console.log(
+      `🗑️ Solicitando exclusão do cliente ${clientId} na org ${session.orgId}`
+    )
+
+    // 🔹 Executa exclusão com Service Role
+    await deleteClientById({ orgId: session.orgId, clientId })
+
+    // 🔹 Atualiza cache e retorna sucesso
+    revalidatePath('/clients')
+    return { success: true, message: 'Cliente excluído com sucesso.' }
+  } catch (err) {
+    console.error('❌ Erro ao excluir cliente:', err)
     return {
       success: false,
-      message: "Erro ao excluir cliente. Tente novamente mais tarde.",
-    };
+      message:
+        err instanceof Error
+          ? err.message
+          : 'Erro desconhecido ao excluir cliente.',
+    }
   }
-
-  // 🔸 Revalida a listagem de clientes no cache
-  revalidatePath("/clients");
-
-  return { success: true, message: "Cliente excluído com sucesso." };
 }

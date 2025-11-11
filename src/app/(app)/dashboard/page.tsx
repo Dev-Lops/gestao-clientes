@@ -2,28 +2,20 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { DashboardSkeleton } from "@/components/shared/skeletons/dashboard-skeleton";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { useAppStore } from "@/store/appStore";
 import type {
   AppClient,
   AppTask,
   ContentCalendarItem,
-  OrgClientStats,
 } from "@/types/tables";
-import { format, parseISO } from "date-fns";
 
-const EMPTY_CLIENTS: AppClient[] = [];
-const EMPTY_TASKS: AppTask[] = [];
-const EMPTY_CALENDAR_ITEMS: ContentCalendarItem[] = [];
-const EMPTY_STATS: OrgClientStats[] = [];
-
+// rótulos que tu já usa
 const STATUS_LABELS: Record<string, string> = {
   new: "Novo",
   onboarding: "Onboarding",
@@ -32,7 +24,16 @@ const STATUS_LABELS: Record<string, string> = {
   closed: "Encerrado",
 };
 
-type KPI = { label: string; value: string | number; helper: string };
+// helperzinho pra hoje
+function isToday(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
 
 export default function DashboardPage() {
   return (
@@ -44,159 +45,145 @@ export default function DashboardPage() {
 
 function RealtimeDashboard() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const router = useRouter();
-  const setTable = useAppStore((state) => state.setTable);
-  const orgId = useAppStore((state) => state.orgId);
+  const setTable = useAppStore((s) => s.setTable);
+  const orgId = useAppStore((s) => s.orgId);
 
+  // dados já carregados na store (se tiver)
   const clients =
-    (useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? EMPTY_CLIENTS;
+    ((useAppStore((s) => s.tables.app_clients) as AppClient[]) ?? []) || [];
   const tasks =
-    (useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? EMPTY_TASKS;
-  const agendaItems =
-    (useAppStore(
-      (s) => s.tables.app_content_calendar,
-    ) as ContentCalendarItem[]) ?? EMPTY_CALENDAR_ITEMS;
-  const stats =
-    ((useAppStore((s) => s.tables.org_client_stats) as OrgClientStats[]) ??
-      EMPTY_STATS)[0] ?? null;
+    ((useAppStore((s) => s.tables.app_tasks) as AppTask[]) ?? []) || [];
+  const agenda =
+    ((useAppStore((s) => s.tables.app_content_calendar) as ContentCalendarItem[]) ??
+      []) || [];
 
-  const [loading, setLoading] = useState(() => clients.length === 0);
+  const [loading, setLoading] = useState(clients.length === 0);
   const [error, setError] = useState<string | null>(null);
-  const bootstrappedRef = useRef(false);
+  const bootstrapped = useRef(false);
 
+  // carregar do supabase quando não tiver na store ou quando mudou org
   useEffect(() => {
-    if (!orgId || bootstrappedRef.current) return;
+    if (!orgId) return;
+    if (bootstrapped.current && clients.length > 0) return;
 
-    if (clients.length > 0) {
-      bootstrappedRef.current = true;
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
 
-    let ignore = false;
-    const organizationId = orgId;
-
-    async function fetchData() {
+    async function load() {
       try {
         setLoading(true);
 
-        const [statsRes, clientsRes, tasksRes, agendaRes] = await Promise.all([
-          supabase
-            .from("org_client_stats_view")
-            .select(
-              "id, org_id, total, ativos, onboarding, pausados, media_progresso",
-            )
-            .eq("org_id", organizationId)
-            .limit(1),
-
+        const [clientsRes, tasksRes, agendaRes] = await Promise.all([
           supabase
             .from("app_clients")
-            .select("id, org_id, name, status, plan, main_channel, created_at")
-            .eq("org_id", organizationId)
+            .select("id, org_id, name, status, plan, created_at")
+            .eq("org_id", orgId ?? "")
             .order("created_at", { ascending: false })
-            .limit(6),
+            .limit(30),
 
           supabase
             .from("app_tasks")
-            .select(
-              "id, org_id, client_id, title, status, due_date, urgency, created_at",
-            )
-            .eq("org_id", organizationId)
-            .limit(20),
+            .select("id, org_id, client_id, title, status, urgency, due_date, created_at")
+            .eq("org_id", orgId ?? "")
+            .order("created_at", { ascending: false })
+            .limit(50),
 
           supabase
             .from("app_content_calendar")
-            .select(
-              "id, org_id, created_by, event_date, title, notes, channel, created_at",
-            )
-            .eq("org_id", organizationId)
+            .select("id, org_id, title, event_date, notes, channel, created_at")
+            .eq("org_id", orgId ?? "")
             .order("event_date", { ascending: true })
-            .limit(14),
+            .limit(20),
         ]);
 
+
         if (
-          statsRes.error ||
           clientsRes.error ||
           tasksRes.error ||
           agendaRes.error
         ) {
           throw (
-            statsRes.error ||
             clientsRes.error ||
             tasksRes.error ||
             agendaRes.error
           );
         }
-        const normalizedAgenda = (
-          (agendaRes.data ?? []) as ContentCalendarItem[]
-        ).map((item) => ({
-          ...item,
-          date: item.event_date
-            ? format(parseISO(item.event_date), "yyyy-MM-dd")
-            : "",
-        }));
 
-        setTable("org_client_stats", statsRes.data ?? []);
+        if (cancelled) return;
+
         setTable("app_clients", clientsRes.data ?? []);
         setTable("app_tasks", tasksRes.data ?? []);
-        setTable("app_content_calendar", normalizedAgenda);
+        setTable("app_content_calendar", agendaRes.data ?? []);
 
-        bootstrappedRef.current = true;
+        bootstrapped.current = true;
         setLoading(false);
       } catch (err) {
-        console.error("🚨 Dashboard error:", err);
-        if (!ignore) {
-          setError("Falha ao carregar dados.");
+        console.error("Erro ao carregar dashboard:", err);
+        if (!cancelled) {
+          setError("Não foi possível carregar os dados.");
           setLoading(false);
         }
       }
     }
 
-    fetchData();
+    void load();
+
     return () => {
-      ignore = true;
+      cancelled = true;
     };
-  }, [clients.length, orgId, setTable, supabase]);
+  }, [orgId, supabase, setTable, clients.length]);
 
-  useEffect(() => {
-    if (error) {
-      const timeout = setTimeout(() => router.refresh(), 4000);
-      return () => clearTimeout(timeout);
-    }
-  }, [error, router]);
+  if (!orgId) {
+    // usuário ainda não tem org resolvida
+    return <DashboardSkeleton />;
+  }
 
-  if (!orgId) return <DashboardSkeleton />;
-  if (loading) return <DashboardSkeleton />;
-  if (error)
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error) {
     return (
       <div className="p-10 text-center text-red-600 font-medium">{error}</div>
     );
+  }
 
-  const { ativos, onboarding, pausados, media_progresso } = stats ?? {};
+  // =========================================================
+  //  CÁLCULOS DERIVADOS (aqui está o segredo da contagem)
+  // =========================================================
 
-  const atrasadas = tasks.filter((t) =>
-    ["blocked", "todo"].includes(t.status ?? ""),
+  const activeClients = clients.filter((c) => c.status === "active").length;
+  const onboardingClients = clients.filter(
+    (c) => c.status === "onboarding"
   ).length;
+  const pausedClients = clients.filter((c) => c.status === "paused").length;
 
-  const urgentes = tasks.filter(
+  const urgentTasks = tasks.filter(
     (t) =>
-      ["high", "critical"].includes(t.urgency ?? "") && t.status !== "done",
-  ).length;
+      (t.urgency === "high" || t.urgency === "critical") &&
+      t.status !== "done"
+  );
 
-  const kpis: KPI[] = [
-    {
-      label: "Clientes ativos",
-      value: ativos ?? 0,
-      helper: "em acompanhamento",
-    },
-    { label: "Em onboarding", value: onboarding ?? 0, helper: "em integração" },
-    { label: "Pausados", value: pausados ?? 0, helper: "aguardando retorno" },
-    {
-      label: "Média de progresso",
-      value: `${media_progresso ?? 0}%`,
-      helper: "dos planos ativos",
-    },
-  ];
+  const lateTasks = tasks.filter((t) => {
+    if (!t.due_date) return false;
+    const due = new Date(t.due_date);
+    const today = new Date();
+    return due < today && t.status !== "done";
+  });
+
+  const todayTasks = tasks.filter(
+    (t) => t.due_date && isToday(t.due_date) && t.status !== "done"
+  );
+
+  // ordem de prioridade pro bloco "Prioridades do dia"
+  const priorities = [
+    ...urgentTasks,
+    ...lateTasks.filter((lt) => !urgentTasks.find((u) => u.id === lt.id)),
+    ...todayTasks.filter(
+      (tt) =>
+        !urgentTasks.find((u) => u.id === tt.id) &&
+        !lateTasks.find((l) => l.id === tt.id)
+    ),
+  ].slice(0, 6);
 
   return (
     <motion.div
@@ -204,17 +191,20 @@ function RealtimeDashboard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
+      {/* =========================================================
+          1. VISÃO GERAL
+      ========================================================= */}
       <header className="flex flex-wrap items-start justify-between gap-6">
         <div className="space-y-2">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">
+          <p className="text-sm font-medium uppercase tracking-[0.25em] text-slate-400">
             Visão geral
           </p>
           <h1 className="text-3xl font-semibold text-slate-900">
-            Painel de Controle
+            Painel de Gestão
           </h1>
           <p className="max-w-xl text-sm text-slate-500">
-            Tudo em tempo real — clientes, tarefas e agenda se atualizam
-            automaticamente.
+            Leitura rápida do que está vivo na operação: clientes, tarefas e
+            agenda.
           </p>
         </div>
         <Button size="lg" asChild>
@@ -222,137 +212,225 @@ function RealtimeDashboard() {
         </Button>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item, i) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <Card className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-all">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs uppercase text-slate-400 tracking-widest">
-                  {item.helper}
-                </span>
-                <span className="text-3xl font-semibold text-slate-900">
-                  {item.value}
-                </span>
-                <span className="text-sm text-slate-500">{item.label}</span>
-              </div>
-            </Card>
-          </motion.div>
-        ))}
+      {/* KPIs */}
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <KpiCard
+          icon="🟢"
+          label="Clientes ativos"
+          value={activeClients}
+          color="bg-emerald-500/10 text-emerald-700"
+        />
+        <KpiCard
+          icon="🟡"
+          label="Onboarding"
+          value={onboardingClients}
+          color="bg-amber-500/10 text-amber-700"
+        />
+        <KpiCard
+          icon="🟣"
+          label="Pausados"
+          value={pausedClients}
+          color="bg-purple-500/10 text-purple-700"
+        />
+        <KpiCard
+          icon="🔥"
+          label="Tarefas urgentes"
+          value={urgentTasks.length}
+          color="bg-red-500/10 text-red-700"
+        />
+        <KpiCard
+          icon="🕒"
+          label="Entregas hoje"
+          value={todayTasks.length}
+          color="bg-blue-500/10 text-blue-700"
+        />
       </section>
 
-      <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-        <span>🔥 {urgentes} tarefas urgentes</span>
-        <span>⏰ {atrasadas} tarefas atrasadas</span>
-      </div>
+      {/* =========================================================
+          2. AÇÃO (PRIORIDADES)
+      ========================================================= */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Prioridades do dia
+          </h2>
+          <Link
+            href="/tasks"
+            className="text-xs text-indigo-600 hover:underline"
+          >
+            ver tudo
+          </Link>
+        </div>
 
-      {/* Últimos clientes */}
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
-          Últimos clientes
-        </h2>
+        {priorities.length === 0 ? (
+          <Card className="p-6 text-sm text-slate-500">
+            Nada urgente agora. Universo em equilíbrio ✨
+          </Card>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {priorities.map((task) => (
+              <Card
+                key={task.id}
+                className="p-4 flex flex-col gap-2 border-l-4 border-red-400 bg-white/70"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium text-slate-800">{task.title}</p>
+                  {task.urgency ? (
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-red-100 text-red-700 uppercase tracking-wide">
+                      {task.urgency}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="text-xs text-slate-500">
+                  {task.due_date
+                    ? `Prazo: ${new Date(
+                      task.due_date
+                    ).toLocaleDateString("pt-BR")}`
+                    : "Sem prazo"}
+                </p>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* =========================================================
+          3. FUTURO (AGENDA / PRÓXIMOS)
+      ========================================================= */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Próximas atividades
+          </h2>
+          <Link
+            href="/calendar"
+            className="text-xs text-indigo-600 hover:underline"
+          >
+            ver agenda
+          </Link>
+        </div>
+
+        {agenda.length === 0 ? (
+          <Card className="p-6 text-sm text-slate-500">
+            Nenhum evento agendado.
+          </Card>
+        ) : (
+          <div className="flex gap-3 overflow-x-auto pb-2">
+            {agenda.map((event) => (
+              <Card
+                key={event.id}
+                className="min-w-[200px] p-4 bg-white shadow-sm hover:shadow-md transition rounded-2xl border border-slate-200"
+              >
+                <p className="text-sm font-medium text-slate-900">
+                  {event.title ?? "Sem título"}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {event.event_date
+                    ? new Date(event.event_date).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                    })
+                    : "Data não definida"}
+                </p>
+                {event.notes ? (
+                  <p className="text-xs text-slate-400 mt-2 line-clamp-2">
+                    {event.notes}
+                  </p>
+                ) : null}
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* =========================================================
+          4. CLIENTES RECENTES
+      ========================================================= */}
+      <section className="space-y-3 pb-10">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Últimos clientes
+          </h2>
+          <Link
+            href="/clients"
+            className="text-xs text-indigo-600 hover:underline"
+          >
+            ver todos
+          </Link>
+        </div>
+
         {clients.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <Card className="p-6 text-sm text-slate-500">
             Nenhum cliente cadastrado ainda.
-          </p>
+          </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {clients.map((client) => {
+            {clients.slice(0, 6).map((client) => {
               const label =
                 STATUS_LABELS[client.status ?? ""] ??
                 client.status ??
                 "Desconhecido";
-
-              const badgeClass =
-                label === "Ativo"
-                  ? "text-green-600"
-                  : label === "Onboarding"
-                    ? "text-yellow-600"
-                    : label === "Pausado"
+              const color =
+                client.status === "active"
+                  ? "text-emerald-600"
+                  : client.status === "onboarding"
+                    ? "text-amber-500"
+                    : client.status === "paused"
                       ? "text-orange-500"
-                      : label === "Encerrado"
-                        ? "text-red-500"
-                        : "text-slate-500";
+                      : "text-slate-500";
 
               return (
-                <motion.div
+                <Card
                   key={client.id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition"
                 >
-                  <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-                    <div className="flex flex-col gap-1">
-                      <h3 className="font-medium text-slate-900">
-                        {client.name}
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Status: <span className={badgeClass}>{label}</span>
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Criado em:{" "}
-                        {client.created_at
-                          ? new Date(client.created_at).toLocaleDateString(
-                              "pt-BR",
-                              {
-                                weekday: "short",
-                                day: "2-digit",
-                                month: "short",
-                              },
-                            )
-                          : "Data não definida"}
-                      </p>
-                    </div>
-                  </Card>
-                </motion.div>
+                  <h3 className="font-medium text-slate-900">
+                    {client.name ?? "Sem nome"}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Status: <span className={color}>{label}</span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Criado em:{" "}
+                    {client.created_at
+                      ? new Date(client.created_at).toLocaleDateString(
+                        "pt-BR",
+                        {
+                          day: "2-digit",
+                          month: "short",
+                        }
+                      )
+                      : "—"}
+                  </p>
+                </Card>
               );
             })}
           </div>
         )}
       </section>
-
-      {/* Próximos compromissos */}
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900 mb-3">
-          Próximos compromissos (14 dias)
-        </h2>
-        {agendaItems.length === 0 ? (
-          <p className="text-sm text-slate-500">Nenhum evento agendado.</p>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {agendaItems.map((event) => (
-              <motion.div
-                key={event.id}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <Card className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-                  <h3 className="font-medium text-slate-900">
-                    {event.title ?? "Sem título"}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {event.date
-                      ? new Date(event.date).toLocaleDateString("pt-BR", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "short",
-                        })
-                      : "Data não definida"}
-                  </p>
-                  {event.notes && (
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">
-                      {event.notes}
-                    </p>
-                  )}
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </section>
     </motion.div>
+  );
+}
+
+// componentezinho pros cards do topo
+function KpiCard({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: string;
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <Card
+      className={`p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-2 ${color}`}
+    >
+      <div className="text-3xl leading-none">{icon}</div>
+      <div className="text-2xl font-semibold">{value}</div>
+      <div className="text-sm opacity-80">{label}</div>
+    </Card>
   );
 }

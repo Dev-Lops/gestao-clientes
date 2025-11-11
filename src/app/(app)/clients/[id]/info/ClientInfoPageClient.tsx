@@ -18,14 +18,15 @@ import {
   User,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { ClientProgressCard } from "@/features/clients/components/ClientProgressCard";
 import { ClientStatusBadge } from "@/features/clients/components/ClientStatusBadge";
 import { DeleteClientButton } from "@/features/clients/components/DeleteClientButton";
 import { EditClientDialog } from "@/features/clients/components/EditClientDialog";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import type { AppClient } from "@/types/tables";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { AppClient } from "@/types/tables";
+import { ClientStatus } from "@/types/client";
 
 export default function ClientInfoPageClient({
   id,
@@ -124,7 +125,7 @@ export default function ClientInfoPageClient({
               <FolderOpen className="h-4 w-4" /> Pastas
             </Button>
           </Link>
-          <Link href={`/clients/${id}/tasks/new`}>
+          <Link href={`/clients/${id}/tasks`}>
             <Button
               variant="outline"
               className="flex items-center gap-2 text-indigo-700 border-indigo-300 hover:bg-indigo-50"
@@ -142,7 +143,8 @@ export default function ClientInfoPageClient({
             Status
           </p>
           <div className="mt-2">
-            <ClientStatusBadge status={client.status} />
+            <ClientStatusBadge status={client.status as ClientStatus | null} />
+
           </div>
         </Card>
 

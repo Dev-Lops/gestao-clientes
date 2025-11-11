@@ -1,127 +1,64 @@
-"use server";
+'use server'
 
-import { revalidatePath } from "next/cache";
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { getSessionProfile } from '@/services/auth/session'
+import { revalidatePath } from 'next/cache'
 
-import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { getSessionProfile } from "@/services/auth/session";
+export async function createTask(formData: FormData) {
+  const title = formData.get('title') as string
+  const due_date = formData.get('due_date') as string | null
+  const urgency = formData.get('urgency') as string | null
+  const clientId = formData.get('clientId') as string
 
-type TaskStatus = "todo" | "doing" | "done" | "blocked";
-type TaskUrgency = "low" | "medium" | "high" | "critical";
+  if (!title?.trim()) return
 
-const DEFAULT_STATUS: TaskStatus = "todo";
+  const { user } = await getSessionProfile()
+  if (!user) return
 
-function parseStatus(value: string | null): TaskStatus {
-  switch (value) {
-    case "doing":
-    case "done":
-    case "blocked":
-      return value;
-    default:
-      return DEFAULT_STATUS;
-  }
-}
+  const supabase = await createSupabaseServerClient()
 
-function parseUrgency(value: string | null): TaskUrgency {
-  switch (value) {
-    case "medium":
-    case "high":
-    case "critical":
-      return value;
-    default:
-      return "low";
-  }
-}
+  const adjustedDate = due_date
+    ? new Date(`${due_date}T12:00:00Z`).toISOString()
+    : null
 
-export async function createTask(formData: FormData): Promise<void> {
-  const clientId = String(formData.get("clientId") ?? "").trim();
-  const title = String(formData.get("title") ?? "").trim();
-  const dueDate = String(formData.get("due_date") ?? "").trim();
-  const urgency = parseUrgency(String(formData.get("urgency")) ?? null);
-
-  if (!clientId || !title) {
-    throw new Error("Informe o cliente e o título da tarefa.");
-  }
-
-  const session = await getSessionProfile();
-  if (!session.user || !session.orgId) {
-    throw new Error("Usuário não autenticado ou organização não encontrada.");
-  }
-
-  const supabase = createSupabaseServiceRoleClient();
-  const { error } = await supabase.from("app_tasks").insert({
-    org_id: session.orgId,
+  const { error } = await supabase.from('app_tasks').insert({
+    title: title.trim(),
     client_id: clientId,
-    title,
-    due_date: dueDate || null,
-    urgency,
-    status: DEFAULT_STATUS,
-  });
+    org_id: user.user_metadata?.org_id ?? null,
+    created_by: user.id,
+    due_date: adjustedDate,
+    urgency: urgency || null,
+    status: 'todo',
+  })
 
-  if (error) {
-    console.error("Erro ao criar tarefa:", error.message);
-    throw new Error("Não foi possível criar a tarefa.");
-  }
+  if (error) console.error('Erro ao criar task:', error)
 
-  revalidatePath(`/clients/${clientId}/tasks`);
+  revalidatePath(`/clients/${clientId}/tasks`)
 }
 
-export async function toggleTask(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "").trim();
-  const clientId = String(formData.get("clientId") ?? "").trim();
-  const status = parseStatus(String(formData.get("status")) ?? null);
+export async function toggleTask(formData: FormData) {
+  const id = formData.get('id') as string
+  const status = formData.get('status') as string
+  const clientId = formData.get('clientId') as string
 
-  if (!id || !clientId) {
-    throw new Error("Dados inválidos para atualização.");
-  }
+  const { user } = await getSessionProfile()
+  if (!user) return
 
-  const session = await getSessionProfile();
-  if (!session.user || !session.orgId) {
-    throw new Error("Usuário não autenticado ou organização não encontrada.");
-  }
+  const newStatus = status === 'done' ? 'todo' : 'done'
 
-  const nextStatus: TaskStatus = status === "done" ? DEFAULT_STATUS : "done";
-
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
-    .from("app_tasks")
-    .update({
-      status: nextStatus,
-    })
-    .eq("id", id)
-    .eq("org_id", session.orgId);
+    .from('app_tasks')
+    .update({ status: newStatus })
+    .eq('id', id)
 
-  if (error) {
-    console.error("Erro ao atualizar tarefa:", error.message);
-    throw new Error("Erro ao atualizar a tarefa.");
-  }
+  if (error) console.error('Erro ao atualizar task:', error)
 
-  revalidatePath(`/clients/${clientId}/tasks`);
+  revalidatePath(`/clients/${clientId}/tasks`)
 }
 
-export async function deleteTask(formData: FormData): Promise<void> {
-  const id = String(formData.get("id") ?? "").trim();
-  const clientId = String(formData.get("clientId") ?? "").trim();
-
-  if (!id || !clientId) {
-    throw new Error("Dados inválidos para exclusão.");
-  }
-
-  const session = await getSessionProfile();
-  if (!session.user || !session.orgId) {
-    throw new Error("Usuário não autenticado ou organização não encontrada.");
-  }
-
-  const supabase = createSupabaseServiceRoleClient();
-  const { error } = await supabase
-    .from("app_tasks")
-    .delete()
-    .eq("id", id)
-    .eq("org_id", session.orgId);
-
-  if (error) {
-    console.error("Erro ao excluir tarefa:", error.message);
-    throw new Error("Erro ao excluir tarefa.");
-  }
-
-  revalidatePath(`/clients/${clientId}/tasks`);
+export async function deleteTask(id: string, clientId: string) {
+  const supabase = await createSupabaseServerClient()
+  await supabase.from('app_tasks').delete().eq('id', id)
+  revalidatePath(`/clients/${clientId}/tasks`)
 }
